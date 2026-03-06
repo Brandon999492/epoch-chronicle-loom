@@ -1,1 +1,4 @@
 project_id = "sqbadjwzyhiuxbwznoej"
+
+[functions.video-scene-image]
+verify_jwt = false
