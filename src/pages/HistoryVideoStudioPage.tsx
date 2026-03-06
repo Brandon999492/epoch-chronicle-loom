@@ -1,0 +1,383 @@
+import { useState, useEffect } from "react";
+import { Header } from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { VideoScriptPanel, type VideoScript } from "@/components/video/VideoScriptPanel";
+import { VideoSceneBuilder } from "@/components/video/VideoSceneBuilder";
+import { VideoSettingsPanel, type VideoSettings } from "@/components/video/VideoSettingsPanel";
+import { VideoGallery } from "@/components/video/VideoGallery";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import {
+  Save, Download, Archive, Clapperboard, Film, Sparkles,
+  PenLine, BookmarkPlus, Share2, RefreshCw
+} from "lucide-react";
+
+const DEFAULT_SETTINGS: VideoSettings = {
+  resolution: "1080p",
+  frameRate: "24",
+  cinematicStyle: "documentary",
+  cameraEffect: "auto",
+  includeSubtitles: true,
+  includeNarration: true,
+  includeMusic: true,
+};
+
+export default function HistoryVideoStudioPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [script, setScript] = useState<VideoScript | null>(null);
+  const [settings, setSettings] = useState<VideoSettings>(DEFAULT_SETTINGS);
+  const [saving, setSaving] = useState(false);
+
+  // Load autosaved draft on mount
+  useEffect(() => {
+    try {
+      const draft = localStorage.getItem("video-draft-script");
+      if (draft && !script) {
+        const parsed = JSON.parse(draft);
+        if (parsed?.title && parsed?.scenes) setScript(parsed);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Autosave script changes
+  useEffect(() => {
+    if (script) {
+      try {
+        localStorage.setItem("video-draft-script", JSON.stringify(script));
+      } catch { /* ignore */ }
+    }
+  }, [script]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="pt-20 flex items-center justify-center">
+          <div className="text-center space-y-4 p-8">
+            <Clapperboard className="h-16 w-16 text-primary/30 mx-auto" />
+            <h1 className="text-2xl font-display font-bold">History Video AI Studio</h1>
+            <p className="text-muted-foreground">Sign in to create AI-powered historical videos</p>
+            <Link to="/auth">
+              <Button>Sign In</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSaveProject = async () => {
+    if (!script) return;
+    setSaving(true);
+
+    const { error } = await supabase.from("user_videos").insert({
+      user_id: user.id,
+      title: script.title,
+      prompt: script.synopsis,
+      script: JSON.stringify(script),
+      scenes: script.scenes as any,
+      style: script.category,
+      duration_seconds: script.totalDuration,
+      resolution: settings.resolution,
+      status: "draft",
+      era: script.era,
+      category: script.category,
+    });
+
+    if (error) {
+      toast.error("Failed to save project");
+    } else {
+      toast.success("Project saved to your gallery!");
+    }
+    setSaving(false);
+  };
+
+  const handleExportScript = () => {
+    if (!script) return;
+    const blob = new Blob([JSON.stringify(script, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${script.title.replace(/\s+/g, "-").toLowerCase()}-script.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Script exported");
+  };
+
+  const handleSaveToJournal = async () => {
+    if (!script) return;
+    const content = `# ${script.title}\n\n**Synopsis:** ${script.synopsis}\n\n**Era:** ${script.era}\n**Category:** ${script.category}\n**Duration:** ${script.totalDuration}s\n\n---\n\n${script.scenes.map(s =>
+      `### Scene ${s.sceneNumber}: ${s.title}\n\n**Narration:** ${s.narration}\n\n**Visuals:** ${s.visualDescription}\n\n**Camera:** ${s.cameraDirection} | **Music:** ${s.musicMood}${s.onScreenText ? `\n\n**On-screen:** "${s.onScreenText}"` : ""}`
+    ).join("\n\n---\n\n")}\n\n---\n\n**Sources:** ${script.historicalSources?.join(", ") || "N/A"}\n\n*🏷️ AI Historical Reconstruction*`;
+
+    const { error } = await supabase.from("journals").insert({
+      user_id: user.id,
+      title: `Video Script — ${script.title}`,
+      content,
+      category: "ai-response",
+      word_count: content.split(/\s+/).length,
+    });
+
+    if (error) {
+      toast.error("Failed to save to journal");
+    } else {
+      toast.success("Script saved to journal!");
+    }
+  };
+
+  const handleAutoArchive = async () => {
+    if (!script) return;
+    const description = `${script.synopsis}\n\n${script.scenes.map(s => s.narration).join("\n\n")}\n\n*AI Historical Reconstruction*`;
+
+    const { error } = await supabase.from("custom_events").insert({
+      user_id: user.id,
+      title: script.title,
+      description,
+      year_label: "AI Generated",
+      era: script.era,
+      category: script.category === "battle" ? "battle" : script.category === "biography" ? "biography" : "general",
+      is_public: false,
+    });
+
+    if (error) {
+      toast.error("Failed to add to archive");
+    } else {
+      toast.success("Added to your personal archive!");
+    }
+  };
+
+  const handleLoadProject = async (id: string) => {
+    const { data, error } = await supabase
+      .from("user_videos")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      toast.error("Failed to load project");
+      return;
+    }
+
+    try {
+      const parsed = typeof data.script === "string" ? JSON.parse(data.script) : data.script;
+      if (parsed?.title && parsed?.scenes) {
+        setScript(parsed);
+        if (data.resolution) setSettings(prev => ({ ...prev, resolution: data.resolution! }));
+        toast.success(`Loaded: ${data.title}`);
+      } else {
+        toast.error("Project script data is invalid");
+      }
+    } catch {
+      toast.error("Failed to parse project data");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background relative">
+      {/* Cinematic timeline background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.03] dark:opacity-[0.05]">
+        <div className="absolute left-[15%] top-0 bottom-0 w-px bg-primary" />
+        <div className="absolute right-[15%] top-0 bottom-0 w-px bg-primary" />
+        {Array.from({ length: 15 }).map((_, i) => (
+          <div key={i} className="absolute left-[15%] flex items-center gap-2" style={{ top: `${7 + i * 6.5}%` }}>
+            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <div className="w-8 h-px bg-primary/50" />
+          </div>
+        ))}
+        {/* Decorative film strip effect */}
+        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
+      </div>
+
+      <Header />
+      <div className="pt-20 pb-10 relative z-10">
+        <div className="container mx-auto px-4">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 mb-6"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center">
+              <Clapperboard className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-display font-bold flex items-center gap-2">
+                History Video AI Studio
+                <Badge variant="secondary" className="text-[10px]">Beta</Badge>
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                AI-powered historical video script generation & scene planning
+              </p>
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Script Generator + Gallery */}
+            <div className="lg:col-span-4 space-y-6">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-4"
+              >
+                <VideoScriptPanel onScriptGenerated={setScript} />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-4"
+              >
+                <VideoGallery userId={user.id} onSelectProject={handleLoadProject} />
+              </motion.div>
+            </div>
+
+            {/* Center: Scene Builder */}
+            <div className="lg:col-span-5">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-4 min-h-[500px]"
+              >
+                {script ? (
+                  <>
+                    <VideoSceneBuilder script={script} onUpdateScript={setScript} />
+                    <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-border/30">
+                      <Button size="sm" className="gap-1.5 flex-1" onClick={handleSaveProject} disabled={saving}>
+                        <Save className="h-3.5 w-3.5" /> {saving ? "Saving..." : "Save Project"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExportScript}>
+                        <Download className="h-3.5 w-3.5" /> Export
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={handleSaveToJournal}>
+                        <PenLine className="h-3.5 w-3.5" /> Journal
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={handleAutoArchive}>
+                        <Archive className="h-3.5 w-3.5" /> Archive
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2 text-center italic">
+                      🏷️ AI Historical Reconstruction
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[400px] text-center">
+                    <Film className="h-16 w-16 text-muted-foreground/20 mb-4" />
+                    <h3 className="text-lg font-display font-semibold text-muted-foreground">No Script Yet</h3>
+                    <p className="text-sm text-muted-foreground/60 mt-1 max-w-xs">
+                      Enter a historical topic and generate an AI script to start building your video
+                    </p>
+                    <div className="flex items-center gap-1 mt-4 text-primary/60">
+                      <Sparkles className="h-4 w-4" />
+                      <span className="text-xs">Powered by AI</span>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+
+            {/* Right: Settings */}
+            <div className="lg:col-span-3 space-y-4">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-4"
+              >
+                <VideoSettingsPanel settings={settings} onUpdateSettings={setSettings} />
+              </motion.div>
+
+              {script && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-4"
+                >
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-3">
+                    <Archive className="h-4 w-4 text-primary" /> Archive & Integration
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground mb-3">
+                    This video is linked to the <strong>{script.era}</strong> era.
+                    Save it to your personal archive or journal for cross-referencing with other events.
+                  </p>
+                  <div className="space-y-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1.5 text-xs justify-start"
+                      onClick={handleAutoArchive}
+                    >
+                      <BookmarkPlus className="h-3.5 w-3.5" /> Auto-create archive entry
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1.5 text-xs justify-start"
+                      onClick={handleSaveToJournal}
+                    >
+                      <PenLine className="h-3.5 w-3.5" /> Save script to journal
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Quick info */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-4"
+              >
+                <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> Features
+                </h3>
+                <ul className="text-[10px] text-muted-foreground space-y-1">
+                  <li>• 5 video styles + 6 advanced modes</li>
+                  <li>• Scene-by-scene editing</li>
+                  <li>• Auto-save drafts</li>
+                  <li>• Export & archive integration</li>
+                  <li>• No watermarks or restrictions</li>
+                </ul>
+              </motion.div>
+
+              {/* AI & Usage Info */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.35 }}
+                className="rounded-xl border border-primary/20 bg-primary/5 backdrop-blur-sm p-4"
+              >
+                <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+                  <Film className="h-4 w-4 text-primary" /> AI & Usage Info
+                </h3>
+                <div className="text-[10px] text-muted-foreground space-y-2">
+                  <div>
+                    <span className="font-medium text-foreground/80">Powered by:</span>{" "}
+                    Lovable AI Gateway using Google Gemini (gemini-3-flash-preview)
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground/80">Usage:</span>{" "}
+                    Completely free and unlimited. There are no credit limits, no usage caps, no subscriptions, and no hidden restrictions. Generate as many scripts as you want.
+                  </div>
+                  <div className="pt-1 border-t border-border/30">
+                    <span className="font-medium text-foreground/80">No restrictions on:</span>{" "}
+                    Number of generated scripts, saved projects, exports, scene edits, or draft autosaves. All content is yours — no watermarks, no paywalls, no limits.
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
