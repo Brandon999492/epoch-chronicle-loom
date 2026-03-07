@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
-type Journal = Tables<"journals">;
+type Journal = Omit<Tables<"journals">, "hidden_passcode">;
 
 const JournalPage = () => {
   const { user, loading: authLoading } = useAuth();
