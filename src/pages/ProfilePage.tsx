@@ -26,11 +26,15 @@ const ProfilePage = () => {
         .select("*")
         .eq("user_id", user.id)
         .single()
-        .then(({ data }) => {
+        .then(async ({ data }) => {
           if (data) {
             setUsername(data.username || "");
             setBio(data.bio || "");
-            setAvatarUrl(data.avatar_url || "");
+            // avatar_url now stores the storage path; generate a signed URL
+            if (data.avatar_url) {
+              const { data: signedData } = await supabase.storage.from("avatars").createSignedUrl(data.avatar_url, 3600);
+              setAvatarUrl(signedData?.signedUrl || "");
+            }
           }
         });
     }
@@ -46,8 +50,21 @@ const ProfilePage = () => {
       toast.error("Failed to upload avatar");
       return;
     }
-    const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
-    setAvatarUrl(data.publicUrl);
+    const { data: signedData, error: signError } = await supabase.storage.from("avatars").createSignedUrl(filePath, 3600);
+    if (signError || !signedData?.signedUrl) {
+      toast.error("Failed to get avatar URL");
+      return;
+    }
+    setAvatarUrl(signedData.signedUrl);
+    // Store the path, not the signed URL, so we can regenerate signed URLs later
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: filePath })
+      .eq("user_id", user.id);
+    if (profileError) {
+      toast.error("Failed to save avatar");
+      return;
+    }
     toast.success("Avatar uploaded!");
   };
 
@@ -56,7 +73,7 @@ const ProfilePage = () => {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ username, bio, avatar_url: avatarUrl })
+      .update({ username, bio })
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
