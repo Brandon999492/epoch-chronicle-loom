@@ -34,10 +34,38 @@ serve(async (req) => {
       });
     }
 
+    const MAX_VISUAL_DESC = 2000;
+    const MAX_SCENE_TITLE = 200;
+    const MAX_ERA_STYLE = 100;
+
     const { visualDescription, sceneTitle, era, style } = await req.json();
 
-    if (!visualDescription) {
+    if (!visualDescription || typeof visualDescription !== "string" || visualDescription.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Missing visual description" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (visualDescription.length > MAX_VISUAL_DESC) {
+      return new Response(JSON.stringify({ error: `Visual description must be under ${MAX_VISUAL_DESC} characters.` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (sceneTitle && (typeof sceneTitle !== "string" || sceneTitle.length > MAX_SCENE_TITLE)) {
+      return new Response(JSON.stringify({ error: `Scene title must be under ${MAX_SCENE_TITLE} characters.` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (era && (typeof era !== "string" || era.length > MAX_ERA_STYLE)) {
+      return new Response(JSON.stringify({ error: `Era must be under ${MAX_ERA_STYLE} characters.` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (style && (typeof style !== "string" || style.length > MAX_ERA_STYLE)) {
+      return new Response(JSON.stringify({ error: `Style must be under ${MAX_ERA_STYLE} characters.` }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
