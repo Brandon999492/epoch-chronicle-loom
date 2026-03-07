@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
-type Journal = Tables<"journals">;
+type Journal = Omit<Tables<"journals">, "hidden_passcode">;
 
 const JournalPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -30,7 +30,7 @@ const JournalPage = () => {
     if (!user) return;
     const { data } = await supabase
       .from("journals")
-      .select("*")
+      .select("id, user_id, title, content, category, is_pinned, is_favorite, is_hidden, word_count, tags, linked_era, linked_event_id, created_at, updated_at")
       .eq("user_id", user.id)
       .order("is_pinned", { ascending: false })
       .order("updated_at", { ascending: false });
