@@ -4,7 +4,7 @@ import { categoryColors } from "@/data/types";
 import { Header } from "@/components/Header";
 import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink, Calendar, Tag, MapPin } from "lucide-react";
-import { fixWikimediaUrl } from "@/lib/imageUtils";
+import ImageSlideshow from "@/components/ImageSlideshow";
 
 const EventDetail = () => {
   const { eventId } = useParams();
@@ -24,6 +24,19 @@ const EventDetail = () => {
 
   const era = eras.find((e) => e.id === event.era);
   const categoryColor = categoryColors[event.category];
+
+  // Build images array: combine primary imageUrl + any additional images
+  const allImages: { url: string; caption?: string }[] = [];
+  if (event.imageUrl) {
+    allImages.push({ url: event.imageUrl, caption: event.title });
+  }
+  if (event.images) {
+    event.images.forEach(img => {
+      if (!allImages.some(a => a.url === img.url)) {
+        allImages.push(img);
+      }
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,17 +61,14 @@ const EventDetail = () => {
 
           {/* Event Header */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            {/* Image */}
-            {event.imageUrl && (
-              <div className="mb-8 rounded-xl overflow-hidden border border-border">
-                <img
-                  src={fixWikimediaUrl(event.imageUrl, event.sourceLinks)}
-                  alt={event.title}
-                  className="w-full max-h-[500px] object-contain bg-secondary/30"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+            {/* Image Slideshow */}
+            {allImages.length > 0 && (
+              <ImageSlideshow
+                images={allImages}
+                sourceLinks={event.sourceLinks}
+                alt={event.title}
+                className="mb-8"
+              />
             )}
 
             {/* Meta */}
