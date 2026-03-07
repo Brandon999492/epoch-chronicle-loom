@@ -195,7 +195,6 @@ export type Database = {
           category: string | null
           content: string | null
           created_at: string
-          hidden_passcode: string | null
           id: string
           is_favorite: boolean | null
           is_hidden: boolean | null
@@ -212,7 +211,6 @@ export type Database = {
           category?: string | null
           content?: string | null
           created_at?: string
-          hidden_passcode?: string | null
           id?: string
           is_favorite?: boolean | null
           is_hidden?: boolean | null
@@ -229,7 +227,6 @@ export type Database = {
           category?: string | null
           content?: string | null
           created_at?: string
-          hidden_passcode?: string | null
           id?: string
           is_favorite?: boolean | null
           is_hidden?: boolean | null

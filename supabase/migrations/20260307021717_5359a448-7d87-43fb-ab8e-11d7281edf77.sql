@@ -1,0 +1,1 @@
+ALTER TABLE public.journals DROP COLUMN IF EXISTS hidden_passcode;
