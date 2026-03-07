@@ -1,16 +1,16 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 /**
- * Routes Wikimedia image URLs through our edge function proxy.
- * Converts broken direct URLs to proxy calls using the wiki article title
- * extracted from the sourceLinks, or proxies the URL directly.
+ * Routes image URLs through our edge function proxy.
+ * Uses the wiki article title from sourceLinks when possible (most reliable),
+ * or proxies Wikimedia URLs directly.
  */
 export function fixWikimediaUrl(url: string | undefined, sourceLinks?: { label: string; url: string }[]): string | undefined {
   if (!url) return url;
 
-  // If it's a wikimedia URL, try to extract a wiki title from sourceLinks for reliable lookup
+  // If it's a wikimedia/wikipedia URL, always proxy it
   if (url.includes("wikimedia.org") || url.includes("wikipedia.org")) {
-    // Try to get Wikipedia article title from source links
+    // Try to get Wikipedia article title from source links for reliable lookup
     const wikiLink = sourceLinks?.find(l => l.url.includes("en.wikipedia.org/wiki/"));
     if (wikiLink) {
       const match = wikiLink.url.match(/\/wiki\/([^#?]+)/);
@@ -23,4 +23,11 @@ export function fixWikimediaUrl(url: string | undefined, sourceLinks?: { label: 
   }
 
   return url;
+}
+
+/**
+ * Generates a Wikipedia API image proxy URL from a wiki article title.
+ */
+export function wikiImageUrl(title: string): string {
+  return `${SUPABASE_URL}/functions/v1/image-proxy?wiki=${encodeURIComponent(title)}`;
 }

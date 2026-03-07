@@ -18,6 +18,7 @@ export interface HistoricalEvent {
   category: EventCategory;
   era: string;
   imageUrl?: string;
+  images?: { url: string; caption?: string }[];
   sourceLinks?: { label: string; url: string }[];
 }
 

@@ -3,7 +3,7 @@ import { eras, categoryLabels } from "@/data/historicalData";
 import { Header } from "@/components/Header";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock, Bookmark, BookmarkCheck } from "lucide-react";
-import { fixWikimediaUrl } from "@/lib/imageUtils";
+import ImageSlideshow from "@/components/ImageSlideshow";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useCallback } from "react";
@@ -92,60 +92,71 @@ const EraDetail = () => {
             </h2>
 
             <div className="relative ml-4 border-l-2 border-border pl-8 space-y-6">
-              {era.events.map((event, i) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="relative"
-                >
-                  <div
-                    className="absolute -left-[2.35rem] top-1 w-3 h-3 rounded-full border-2 border-background"
-                    style={{ backgroundColor: `hsl(${era.color})` }}
-                  />
+              {era.events.map((event, i) => {
+                // Build images for compact view
+                const eventImages: { url: string; caption?: string }[] = [];
+                if (event.imageUrl) eventImages.push({ url: event.imageUrl, caption: event.title });
+                if (event.images) {
+                  event.images.forEach(img => {
+                    if (!eventImages.some(a => a.url === img.url)) eventImages.push(img);
+                  });
+                }
 
-                  <Link
-                    to={`/event/${event.id}`}
-                    className="block bg-card-gradient border border-border rounded-lg p-5 hover:border-primary/30 transition-all group"
+                return (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.08 }}
+                    className="relative"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        {event.imageUrl && (
-                          <img
-                            src={fixWikimediaUrl(event.imageUrl, event.sourceLinks)}
-                            alt={event.title}
-                            className="w-full h-40 object-cover rounded-md mb-3"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                          />
-                        )}
-                        <span className="text-xs font-medium text-primary">{event.yearLabel}</span>
-                        <h3 className="text-lg font-display font-semibold text-foreground mt-1 mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{event.description}</p>
-                        <span className="inline-block mt-3 text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground">
-                          {categoryLabels[event.category]}
-                        </span>
+                    <div
+                      className="absolute -left-[2.35rem] top-1 w-3 h-3 rounded-full border-2 border-background"
+                      style={{ backgroundColor: `hsl(${era.color})` }}
+                    />
+
+                    <Link
+                      to={`/event/${event.id}`}
+                      className="block bg-card-gradient border border-border rounded-lg p-5 hover:border-primary/30 transition-all group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          {eventImages.length > 0 && (
+                            <ImageSlideshow
+                              images={eventImages}
+                              sourceLinks={event.sourceLinks}
+                              alt={event.title}
+                              compact
+                              className="mb-3"
+                            />
+                          )}
+                          <span className="text-xs font-medium text-primary">{event.yearLabel}</span>
+                          <h3 className="text-lg font-display font-semibold text-foreground mt-1 mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{event.description}</p>
+                          <span className="inline-block mt-3 text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground">
+                            {categoryLabels[event.category]}
+                          </span>
+                        </div>
+                        <button
+                          onClick={(e) => { e.preventDefault(); toggleBookmark(event.id); }}
+                          className={`p-2 rounded-md shrink-0 ml-3 transition-colors ${
+                            bookmarkedIds.has(event.id)
+                              ? "text-primary"
+                              : "text-muted-foreground hover:text-primary"
+                          }`}
+                          title={bookmarkedIds.has(event.id) ? "Remove bookmark" : "Bookmark this event"}
+                        >
+                          {bookmarkedIds.has(event.id) ? (
+                            <BookmarkCheck className="h-5 w-5" />
+                          ) : (
+                            <Bookmark className="h-5 w-5" />
+                          )}
+                        </button>
                       </div>
-                      <button
-                        onClick={(e) => { e.preventDefault(); toggleBookmark(event.id); }}
-                        className={`p-2 rounded-md shrink-0 ml-3 transition-colors ${
-                          bookmarkedIds.has(event.id)
-                            ? "text-primary"
-                            : "text-muted-foreground hover:text-primary"
-                        }`}
-                        title={bookmarkedIds.has(event.id) ? "Remove bookmark" : "Bookmark this event"}
-                      >
-                        {bookmarkedIds.has(event.id) ? (
-                          <BookmarkCheck className="h-5 w-5" />
-                        ) : (
-                          <Bookmark className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+                    </Link>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
 
