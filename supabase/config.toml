@@ -1,7 +1,1 @@
-project_id = "sqbadjwzyhiuxbwznoej"
-
-[functions.video-scene-image]
-verify_jwt = false
-
-[functions.image-proxy]
-verify_jwt = false
+project_id = "oxtpafmquzfldmeoxgjy"
