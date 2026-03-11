@@ -112,6 +112,56 @@ export type Database = {
         }
         Relationships: []
       }
+      civilizations: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_label: string | null
+          end_year: number | null
+          id: string
+          location_id: string | null
+          name: string
+          slug: string | null
+          start_label: string | null
+          start_year: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_label?: string | null
+          end_year?: number | null
+          id?: string
+          location_id?: string | null
+          name: string
+          slug?: string | null
+          start_label?: string | null
+          start_year?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_label?: string | null
+          end_year?: number | null
+          id?: string
+          location_id?: string | null
+          name?: string
+          slug?: string | null
+          start_label?: string | null
+          start_year?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "civilizations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_events: {
         Row: {
           category: string | null
@@ -157,6 +207,213 @@ export type Database = {
         }
         Relationships: []
       }
+      dynasties: {
+        Row: {
+          civilization_id: string | null
+          coat_of_arms_url: string | null
+          created_at: string
+          description: string | null
+          end_label: string | null
+          end_year: number | null
+          id: string
+          location_id: string | null
+          name: string
+          slug: string | null
+          start_label: string | null
+          start_year: number | null
+          updated_at: string
+        }
+        Insert: {
+          civilization_id?: string | null
+          coat_of_arms_url?: string | null
+          created_at?: string
+          description?: string | null
+          end_label?: string | null
+          end_year?: number | null
+          id?: string
+          location_id?: string | null
+          name: string
+          slug?: string | null
+          start_label?: string | null
+          start_year?: number | null
+          updated_at?: string
+        }
+        Update: {
+          civilization_id?: string | null
+          coat_of_arms_url?: string | null
+          created_at?: string
+          description?: string | null
+          end_label?: string | null
+          end_year?: number | null
+          id?: string
+          location_id?: string | null
+          name?: string
+          slug?: string | null
+          start_label?: string | null
+          start_year?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynasties_civilization_id_fkey"
+            columns: ["civilization_id"]
+            isOneToOne: false
+            referencedRelation: "civilizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynasties_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_figures: {
+        Row: {
+          event_id: string
+          figure_id: string
+          id: string
+          role: string | null
+        }
+        Insert: {
+          event_id: string
+          figure_id: string
+          id?: string
+          role?: string | null
+        }
+        Update: {
+          event_id?: string
+          figure_id?: string
+          id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_figures_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "historical_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_figures_figure_id_fkey"
+            columns: ["figure_id"]
+            isOneToOne: false
+            referencedRelation: "historical_figures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_media: {
+        Row: {
+          display_order: number | null
+          event_id: string
+          id: string
+          media_id: string
+        }
+        Insert: {
+          display_order?: number | null
+          event_id: string
+          id?: string
+          media_id: string
+        }
+        Update: {
+          display_order?: number | null
+          event_id?: string
+          id?: string
+          media_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_media_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "historical_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_media_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      figure_media: {
+        Row: {
+          display_order: number | null
+          figure_id: string
+          id: string
+          media_id: string
+        }
+        Insert: {
+          display_order?: number | null
+          figure_id: string
+          id?: string
+          media_id: string
+        }
+        Update: {
+          display_order?: number | null
+          figure_id?: string
+          id?: string
+          media_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "figure_media_figure_id_fkey"
+            columns: ["figure_id"]
+            isOneToOne: false
+            referencedRelation: "historical_figures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "figure_media_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      figure_relationships: {
+        Row: {
+          figure_id: string
+          id: string
+          related_figure_id: string
+          relationship_type: string
+        }
+        Insert: {
+          figure_id: string
+          id?: string
+          related_figure_id: string
+          relationship_type: string
+        }
+        Update: {
+          figure_id?: string
+          id?: string
+          related_figure_id?: string
+          relationship_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "figure_relationships_figure_id_fkey"
+            columns: ["figure_id"]
+            isOneToOne: false
+            referencedRelation: "historical_figures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "figure_relationships_related_figure_id_fkey"
+            columns: ["related_figure_id"]
+            isOneToOne: false
+            referencedRelation: "historical_figures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           completed_at: string | null
@@ -189,6 +446,173 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      historical_events: {
+        Row: {
+          category: string | null
+          civilization_id: string | null
+          created_at: string
+          description: string | null
+          detailed_description: string | null
+          end_year: number | null
+          end_year_label: string | null
+          exact_date: string | null
+          id: string
+          image_url: string | null
+          location_id: string | null
+          significance: number | null
+          slug: string | null
+          tags: string[] | null
+          time_period_id: string | null
+          title: string
+          updated_at: string
+          year: number | null
+          year_label: string | null
+        }
+        Insert: {
+          category?: string | null
+          civilization_id?: string | null
+          created_at?: string
+          description?: string | null
+          detailed_description?: string | null
+          end_year?: number | null
+          end_year_label?: string | null
+          exact_date?: string | null
+          id?: string
+          image_url?: string | null
+          location_id?: string | null
+          significance?: number | null
+          slug?: string | null
+          tags?: string[] | null
+          time_period_id?: string | null
+          title: string
+          updated_at?: string
+          year?: number | null
+          year_label?: string | null
+        }
+        Update: {
+          category?: string | null
+          civilization_id?: string | null
+          created_at?: string
+          description?: string | null
+          detailed_description?: string | null
+          end_year?: number | null
+          end_year_label?: string | null
+          exact_date?: string | null
+          id?: string
+          image_url?: string | null
+          location_id?: string | null
+          significance?: number | null
+          slug?: string | null
+          tags?: string[] | null
+          time_period_id?: string | null
+          title?: string
+          updated_at?: string
+          year?: number | null
+          year_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_events_civilization_id_fkey"
+            columns: ["civilization_id"]
+            isOneToOne: false
+            referencedRelation: "civilizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_events_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_events_time_period_id_fkey"
+            columns: ["time_period_id"]
+            isOneToOne: false
+            referencedRelation: "time_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_figures: {
+        Row: {
+          biography: string | null
+          birth_label: string | null
+          birth_location_id: string | null
+          birth_year: number | null
+          created_at: string
+          death_label: string | null
+          death_location_id: string | null
+          death_year: number | null
+          dynasty_id: string | null
+          id: string
+          image_url: string | null
+          name: string
+          slug: string | null
+          tags: string[] | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          biography?: string | null
+          birth_label?: string | null
+          birth_location_id?: string | null
+          birth_year?: number | null
+          created_at?: string
+          death_label?: string | null
+          death_location_id?: string | null
+          death_year?: number | null
+          dynasty_id?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          slug?: string | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          biography?: string | null
+          birth_label?: string | null
+          birth_location_id?: string | null
+          birth_year?: number | null
+          created_at?: string
+          death_label?: string | null
+          death_location_id?: string | null
+          death_year?: number | null
+          dynasty_id?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          slug?: string | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_figures_birth_location_id_fkey"
+            columns: ["birth_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_figures_death_location_id_fkey"
+            columns: ["death_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_figures_dynasty_id_fkey"
+            columns: ["dynasty_id"]
+            isOneToOne: false
+            referencedRelation: "dynasties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       journals: {
         Row: {
@@ -241,6 +665,108 @@ export type Database = {
         }
         Relationships: []
       }
+      locations: {
+        Row: {
+          alternate_names: string[] | null
+          continent: string | null
+          country: string | null
+          created_at: string
+          description: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          region: string | null
+          updated_at: string
+        }
+        Insert: {
+          alternate_names?: string[] | null
+          continent?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          region?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alternate_names?: string[] | null
+          continent?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          region?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      media_assets: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_size: number | null
+          height: number | null
+          id: string
+          license: string | null
+          media_type: string
+          metadata: Json | null
+          source: string | null
+          source_url: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          uploaded_by: string | null
+          url: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          height?: number | null
+          id?: string
+          license?: string | null
+          media_type?: string
+          metadata?: Json | null
+          source?: string | null
+          source_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+          url: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          height?: number | null
+          id?: string
+          license?: string | null
+          media_type?: string
+          metadata?: Json | null
+          source?: string | null
+          source_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+          url?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -276,6 +802,59 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      time_periods: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_label: string | null
+          end_year: number | null
+          id: string
+          name: string
+          parent_period_id: string | null
+          slug: string | null
+          sort_order: number | null
+          start_label: string | null
+          start_year: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_label?: string | null
+          end_year?: number | null
+          id?: string
+          name: string
+          parent_period_id?: string | null
+          slug?: string | null
+          sort_order?: number | null
+          start_label?: string | null
+          start_year?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_label?: string | null
+          end_year?: number | null
+          id?: string
+          name?: string
+          parent_period_id?: string | null
+          slug?: string | null
+          sort_order?: number | null
+          start_label?: string | null
+          start_year?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_periods_parent_period_id_fkey"
+            columns: ["parent_period_id"]
+            isOneToOne: false
+            referencedRelation: "time_periods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_videos: {
         Row: {
