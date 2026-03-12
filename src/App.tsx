@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Timeline from "./pages/Timeline";
+import TimelineEngine from "./pages/TimelineEngine";
 import Archive from "./pages/Archive";
 import EraDetail from "./pages/EraDetail";
 import EventDetail from "./pages/EventDetail";
