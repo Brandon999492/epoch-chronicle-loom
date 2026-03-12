@@ -39,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/timeline" element={<Timeline />} />
+            <Route path="/timeline/explore" element={<TimelineEngine />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/era/:eraId" element={<EraDetail />} />
             <Route path="/event/:eventId" element={<EventDetail />} />
