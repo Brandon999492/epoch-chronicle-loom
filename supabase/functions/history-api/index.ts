@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
         .select("*")
         .order("sort_order")
         .order("start_year", { ascending: true, nullsFirst: false });
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json(data);
     }
 
