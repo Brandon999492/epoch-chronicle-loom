@@ -90,11 +90,21 @@ Deno.serve(async (req) => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return err("Unauthorized", 401);
 
-  // Use service role for writes
-  const adminClient = createClient(
+  // Admin role check — only admins can ingest data
+  const serviceClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
+  const { data: roleRow } = await serviceClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!roleRow) return err("Forbidden: admin role required", 403);
+
+  // Use service role client for writes
+  const adminClient = serviceClient;
 
   const url = new URL(req.url);
   const action = url.pathname.replace(/^\/history-ingest\/?/, "").split("/").filter(Boolean)[0] || "";
