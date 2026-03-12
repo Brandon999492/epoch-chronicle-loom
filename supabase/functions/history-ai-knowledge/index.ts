@@ -175,17 +175,17 @@ serve(async (req) => {
       }
     }
 
-    // Use service role for DB queries
-    const adminClient = createClient(
+    // Use anon key for DB queries — all queried tables have public read RLS
+    const readClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_ANON_KEY")!
     );
 
     // Query internal DB based on latest user message
     const latestUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
-    const dbResults = await queryInternalDB(adminClient, latestUserMsg);
+    const dbResults = await queryInternalDB(readClient, latestUserMsg);
     const figureIds = dbResults.figures.map((f: any) => f.id);
-    const relationships = await getRelationships(adminClient, figureIds);
+    const relationships = await getRelationships(readClient, figureIds);
     const dbContext = formatDBContext(dbResults, relationships);
 
     const systemPrompt = SYSTEM_PROMPT_BASE + MODE_ADDITIONS[mode] +
