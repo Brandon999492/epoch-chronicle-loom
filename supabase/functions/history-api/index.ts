@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         .order("year", { ascending: true, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json({ data, total: count, page, limit });
     }
 
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
         .order("birth_year", { ascending: true, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json({ data, total: count, page, limit });
     }
 
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
         .order("start_year", { ascending: true, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json({ data, total: count, page, limit });
     }
 
@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
         .select("*")
         .order("sort_order")
         .order("start_year", { ascending: true, nullsFirst: false });
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json(data);
     }
 
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
         .select("*", { count: "exact" })
         .order("start_year", { ascending: true, nullsFirst: false })
         .range(offset, offset + limit - 1);
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json(data);
     }
 
@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
       let query = supabase.from("locations").select("*", { count: "exact" });
       if (search) query = query.ilike("name", `%${search}%`);
       const { data, count, error: e } = await query.order("name").range(offset, offset + limit - 1);
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json({ data, total: count, page, limit });
     }
 
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
       if (mediaType) query = query.eq("media_type", mediaType);
       if (search) query = query.ilike("title", `%${search}%`);
       const { data, count, error: e } = await query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json({ data, total: count, page, limit });
     }
 
