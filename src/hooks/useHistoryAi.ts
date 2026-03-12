@@ -13,7 +13,7 @@ export interface ChatMessage {
   createdAt?: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-ai`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-ai-knowledge`;
 const IMAGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-ai-image`;
 
 export function useHistoryAi(userId: string | undefined) {

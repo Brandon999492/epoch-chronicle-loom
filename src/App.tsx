@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Timeline from "./pages/Timeline";
+import TimelineEngine from "./pages/TimelineEngine";
 import Archive from "./pages/Archive";
 import EraDetail from "./pages/EraDetail";
 import EventDetail from "./pages/EventDetail";
@@ -38,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/timeline" element={<Timeline />} />
+            <Route path="/timeline/explore" element={<TimelineEngine />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/era/:eraId" element={<EraDetail />} />
             <Route path="/event/:eventId" element={<EventDetail />} />
