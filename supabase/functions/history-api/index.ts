@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
       let query = supabase.from("locations").select("*", { count: "exact" });
       if (search) query = query.ilike("name", `%${search}%`);
       const { data, count, error: e } = await query.order("name").range(offset, offset + limit - 1);
-      if (e) return err(e.message);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json({ data, total: count, page, limit });
     }
 
