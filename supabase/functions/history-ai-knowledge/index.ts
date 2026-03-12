@@ -175,10 +175,10 @@ serve(async (req) => {
       }
     }
 
-    // Use service role for DB queries
-    const adminClient = createClient(
+    // Use anon key for DB queries — all queried tables have public read RLS
+    const readClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_ANON_KEY")!
     );
 
     // Query internal DB based on latest user message
