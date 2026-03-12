@@ -183,9 +183,9 @@ serve(async (req) => {
 
     // Query internal DB based on latest user message
     const latestUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
-    const dbResults = await queryInternalDB(adminClient, latestUserMsg);
+    const dbResults = await queryInternalDB(readClient, latestUserMsg);
     const figureIds = dbResults.figures.map((f: any) => f.id);
-    const relationships = await getRelationships(adminClient, figureIds);
+    const relationships = await getRelationships(readClient, figureIds);
     const dbContext = formatDBContext(dbResults, relationships);
 
     const systemPrompt = SYSTEM_PROMPT_BASE + MODE_ADDITIONS[mode] +
