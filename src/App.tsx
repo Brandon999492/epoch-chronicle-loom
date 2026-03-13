@@ -28,6 +28,7 @@ import HistoryVideoStudioPage from "./pages/HistoryVideoStudioPage";
 import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
 import SeedDataPage from "./pages/SeedDataPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
