@@ -1,63 +1,60 @@
 
 
-## Plan: Complete History Intelligence AI System
+# Plan: Geographic Enrichment + Interactive Country Exploration
 
-### Audit — What exists vs what's missing
+## Current State
+- 381 historical events exist, but **0 locations** in the `locations` table and **0 events** have `location_id` set
+- The `map-events` API uses an `!inner` join on locations, so it returns 0 results
+- Events have no inherent coordinate data — enrichment must infer locations from event titles/descriptions
 
-**Already working:** Streaming chat, 5 modes, conversation persistence, chat history sidebar, delete conversations, bookmark toggle on messages, image generation + download, internal/external linking in markdown, auth-gated, dark/light mode.
+## Approach
 
-**Missing from the master prompt:**
+### 1. Create a `geo-enrich` Edge Function
+A new edge function that:
+- Reads all `historical_events` that have no `location_id`
+- Uses **Lovable AI** (Gemini Flash) to batch-infer location data from each event's title + description — returns `{ name, latitude, longitude, country, continent }` for each event
+- Creates entries in the `locations` table (deduplicating by name)
+- Updates `historical_events.location_id` to link to the created locations
+- Returns a summary of how many events were enriched
+- Protected by auth (admin only)
+- Processes in batches of ~20 events per AI call to stay efficient
 
-| # | Feature | Status |
-|---|---------|--------|
-| 1 | Bookmarked answers panel (view all bookmarked AI messages) | Missing |
-| 2 | Save AI response to journal | Missing |
-| 3 | Export chat logs | Missing |
-| 4 | Map Mode (6th AI mode) | Missing |
-| 5 | AI settings panel on the page | Missing |
-| 6 | Timeline-themed immersive background | Missing — plain bg |
-| 7 | Save generated images to journal/bookmarks | Missing — only download |
-| 8 | Search inside bookmarked AI answers | Missing |
-| 9 | Tagging on bookmarked AI answers | Missing |
+### 2. Update the `map-events` API
+- Change the query to use a `LEFT JOIN` instead of `!inner` join
+- Return events where `locations.latitude IS NOT NULL`
+- Increase limit from 500 to 1000 to show more events
+- Add `country` filter parameter for the country exploration feature
 
-### Implementation
+### 3. Add a `country-events` API endpoint
+- New endpoint in `history-api`: `GET /country-events?country=France`
+- Queries `historical_events` joined with `locations` where `locations.country = ?`
+- Returns events for the clicked country
 
-#### 1. Bookmarked Answers Panel
-Add a toggleable right-side panel on the AI page showing all bookmarked `ai_messages` for the user. Include search-within-bookmarks and a tag display. Clicking a bookmarked answer loads its conversation.
+### 4. Frontend: Country GeoJSON Layer + Side Panel
+In `HistoryMapPage.tsx`:
+- Fetch world country boundaries GeoJSON from a public CDN (natural earth low-res ~200KB)
+- Add a `GeoJSON` layer with transparent fill, subtle borders
+- On country click: highlight the polygon, extract country name, fetch events via `country-events` API
+- Show a slide-in side panel listing events for that country with links to `/event/{id}`
+- Add a close button to dismiss the panel and deselect the country
 
-#### 2. Save to Journal Button
-Add a "Save to Journal" button on each assistant message (alongside the bookmark button). On click, create a new journal entry with the AI response content, linked to the conversation. Uses existing `journals` table — set `category: "ai-response"` and `linked_event_id` to the message ID.
+### 5. Admin Trigger on Map Page
+- Add a small admin-only "Enrich Data" button on the map page
+- Calls the `geo-enrich` edge function
+- Shows progress/results via toast notifications
 
-#### 3. Export Chat Logs
-Add an export button in the top bar or sidebar. Generates a `.txt` or `.md` file of the current conversation and triggers a browser download.
+## Technical Details
 
-#### 4. Map Mode
-Add a 6th mode `"map"` to the `AiMode` type and `MODE_OPTIONS` array. Update the edge function's `SYSTEM_PROMPTS` to include a Map Mode prompt that instructs the AI to describe event locations geographically, mention coordinates, and format location data clearly. (Full interactive map rendering is outside scope — the AI will describe locations textually with geographic context.)
+**Edge function: `supabase/functions/geo-enrich/index.ts`**
+- Uses `SUPABASE_SERVICE_ROLE_KEY` to write to locations/events tables
+- Uses Lovable AI endpoint for geocoding inference
+- Batch processes: selects 20 events, asks AI for locations, upserts, repeats
 
-#### 5. AI Settings Panel
-Add a collapsible settings panel accessible from a gear icon in the top bar. Settings: default AI mode selection, toggle autosave, font size for responses. Store preferences in `localStorage` (or profile table if preferred).
+**GeoJSON source**: `https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json` (TopoJSON) converted client-side, or use `https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson` (direct GeoJSON)
 
-#### 6. Timeline-Themed Background
-Add a subtle timeline-themed CSS background to the AI page — a vertical timeline line with faded date markers, or a gradient with historical texture. Purely cosmetic CSS/SVG enhancement.
-
-#### 7. Save Generated Images to Journal
-Add a "Save to Journal" button on generated images (next to Download). Creates a journal entry with the image embedded as content.
-
-#### 8. Search & Tags on Bookmarked Messages
-Add a `tags` text array column to `ai_messages` table via migration. In the bookmarks panel, allow users to add/remove tags and filter/search bookmarked messages.
-
-### Files to create/modify
-
-- `supabase/functions/history-ai/index.ts` — add Map Mode system prompt
-- `src/hooks/useHistoryAi.ts` — add `exportConversation`, `saveToJournal`, update `AiMode` type with `"map"`
-- `src/pages/HistoryAiPage.tsx` — add bookmarks panel, settings panel, save-to-journal buttons, export button, timeline background, map mode in mode bar
-- `supabase/migrations/` — add `tags` column to `ai_messages`
-
-### Database migration
-```sql
-ALTER TABLE public.ai_messages ADD COLUMN tags text[] DEFAULT '{}';
-```
-
-### Estimated scope
-~6 focused changes across 3-4 files plus 1 migration. No new pages needed — all features integrate into the existing AI page.
+**Files to create/modify**:
+- `supabase/functions/geo-enrich/index.ts` — new edge function
+- `supabase/functions/history-api/index.ts` — update map-events query + add country-events endpoint
+- `src/pages/HistoryMapPage.tsx` — add GeoJSON layer, country click handler, side panel
+- `supabase/config.toml` — add geo-enrich function config
 
