@@ -111,12 +111,14 @@ Deno.serve(async (req) => {
         return json(data);
       }
       if (resourceId) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resourceId);
+        const column = isUuid ? "id" : "slug";
         const { data, error: e } = await supabase
           .from("historical_figures")
           .select("*, dynasty:dynasties(*), birth_location:locations!historical_figures_birth_location_id_fkey(*), death_location:locations!historical_figures_death_location_id_fkey(*)")
-          .eq("id", resourceId)
-          .single();
-        if (e) return err("Figure not found", 404);
+          .eq(column, resourceId)
+          .maybeSingle();
+        if (e || !data) return err("Figure not found", 404);
         return json(data);
       }
 
