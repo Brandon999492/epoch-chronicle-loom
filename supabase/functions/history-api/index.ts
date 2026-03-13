@@ -346,7 +346,7 @@ Deno.serve(async (req) => {
       return err("Unknown entity type. Available: event, figure, dynasty");
     }
 
-    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search", 404);
+    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph", 404);
 
   } catch (e) {
     console.error("API error:", e);
