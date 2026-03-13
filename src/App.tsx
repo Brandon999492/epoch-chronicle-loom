@@ -60,6 +60,9 @@ const App = () => (
             <Route path="/royals/family-tree" element={<RoyalFamilyTree />} />
             <Route path="/royals/:houseId" element={<RoyalHouseDetail />} />
             <Route path="/royals/:houseId/:royalId" element={<RoyalProfilePage />} />
+            <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
+            <Route path="/knowledge-graph/:entityType/:entityId" element={<KnowledgeGraphPage />} />
+            <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
