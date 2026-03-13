@@ -25,6 +25,8 @@ import RoyalProfilePage from "./pages/RoyalProfilePage";
 import RoyalFamilyTree from "./pages/RoyalFamilyTree";
 import HistoryAiPage from "./pages/HistoryAiPage";
 import HistoryVideoStudioPage from "./pages/HistoryVideoStudioPage";
+import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
+import MediaLibraryPage from "./pages/MediaLibraryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
