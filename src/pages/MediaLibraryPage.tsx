@@ -305,7 +305,5 @@ const MediaLibraryPage = () => {
   );
 };
 
-// Missing import for Globe
-import { Globe } from "lucide-react";
 
 export default MediaLibraryPage;
