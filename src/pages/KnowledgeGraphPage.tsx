@@ -2,7 +2,6 @@ import { Header } from "@/components/Header";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { searchApi } from "@/services/searchApi";
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
