@@ -27,6 +27,7 @@ import HistoryAiPage from "./pages/HistoryAiPage";
 import HistoryVideoStudioPage from "./pages/HistoryVideoStudioPage";
 import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
+import SeedDataPage from "./pages/SeedDataPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
             <Route path="/knowledge-graph/:entityType/:entityId" element={<KnowledgeGraphPage />} />
             <Route path="/media-library" element={<MediaLibraryPage />} />
+            <Route path="/admin/seed-data" element={<SeedDataPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
