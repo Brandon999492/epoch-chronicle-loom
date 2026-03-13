@@ -351,7 +351,28 @@ Deno.serve(async (req) => {
       return err("Unknown entity type. Available: event, figure, dynasty");
     }
 
-    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph", 404);
+    // ===== MAP EVENTS (events with location coordinates) =====
+    if (resource === "map-events") {
+      let query = supabase
+        .from("historical_events")
+        .select("id, title, slug, year, year_label, end_year, end_year_label, category, significance, image_url, description, location:locations!inner(id, name, latitude, longitude, country, continent)")
+        .not("locations.latitude", "is", null)
+        .not("locations.longitude", "is", null);
+
+      if (search) query = query.ilike("title", `%${search}%`);
+      if (category) query = query.eq("category", category);
+      if (yearFrom) query = query.gte("year", parseInt(yearFrom));
+      if (yearTo) query = query.lte("year", parseInt(yearTo));
+
+      const { data, error: e } = await query
+        .order("year", { ascending: true, nullsFirst: false })
+        .limit(500);
+
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
+      return json(data);
+    }
+
+    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events", 404);
 
   } catch (e) {
     console.error("API error:", e);
