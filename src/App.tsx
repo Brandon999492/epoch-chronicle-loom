@@ -27,6 +27,7 @@ import HistoryAiPage from "./pages/HistoryAiPage";
 import HistoryVideoStudioPage from "./pages/HistoryVideoStudioPage";
 import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
+import SeedDataPage from "./pages/SeedDataPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
