@@ -207,6 +207,51 @@ export type Database = {
         }
         Relationships: []
       }
+      draft_entries: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string
+          entity_type: string
+          generated_data: Json
+          id: string
+          review_note: string | null
+          reviewed_by: string | null
+          status: string
+          title: string
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by: string
+          entity_type?: string
+          generated_data?: Json
+          id?: string
+          review_note?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          entity_type?: string
+          generated_data?: Json
+          id?: string
+          review_note?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dynasties: {
         Row: {
           civilization_id: string | null
