@@ -6,8 +6,9 @@ import { ExternalResources } from "@/components/ExternalResources";
 import { TrendingTopics, FeaturedEventsCarousel } from "@/components/TrendingAndCarousel";
 import { SearchBar } from "@/components/SearchBar";
 import { motion } from "framer-motion";
-import { ArrowDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowDown, Globe } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import heroBg from "@/assets/hero-bg.jpg";
 
 const quickTags = [
@@ -92,6 +93,26 @@ const Index = () => {
 
       {/* Timeline */}
       <TimelineSection />
+
+      {/* History Map Preview */}
+      <section className="py-20 border-t border-border">
+        <div className="container mx-auto px-4 text-center max-w-2xl">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
+              <Globe className="w-7 h-7 text-primary" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+              Explore History by Location
+            </h2>
+            <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+              Discover historical events around the world with the interactive map. Filter by era, category, and time period to see how history unfolded across the globe.
+            </p>
+            <Button asChild size="lg" className="rounded-full px-8">
+              <Link to="/map">Open History Map</Link>
+            </Button>
+          </motion.div>
+        </div>
+      </section>
 
       {/* Featured Figures */}
       <FeaturedFigures />
