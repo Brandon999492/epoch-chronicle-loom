@@ -267,7 +267,8 @@ const EventDetail = () => {
     );
   }
 
-  const useDatabase = isUuid(eventId);
+  // Use static data only for known legacy short IDs; everything else goes to the database (UUID or slug)
+  const useDatabase = !isLegacyStaticId(eventId);
 
   return (
     <div className="min-h-screen bg-background">
