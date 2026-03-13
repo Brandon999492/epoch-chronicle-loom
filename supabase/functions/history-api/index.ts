@@ -353,6 +353,8 @@ Deno.serve(async (req) => {
 
     // ===== MAP EVENTS (events with location coordinates) =====
     if (resource === "map-events") {
+      const country = url.searchParams.get("country") || "";
+      
       let query = supabase
         .from("historical_events")
         .select("id, title, slug, year, year_label, end_year, end_year_label, category, significance, image_url, description, location:locations!inner(id, name, latitude, longitude, country, continent)")
@@ -363,16 +365,33 @@ Deno.serve(async (req) => {
       if (category) query = query.eq("category", category);
       if (yearFrom) query = query.gte("year", parseInt(yearFrom));
       if (yearTo) query = query.lte("year", parseInt(yearTo));
+      if (country) query = query.eq("locations.country", country);
 
       const { data, error: e } = await query
         .order("year", { ascending: true, nullsFirst: false })
-        .limit(500);
+        .limit(1000);
 
       if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
       return json(data);
     }
 
-    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events", 404);
+    // ===== COUNTRY EVENTS (events for a specific country) =====
+    if (resource === "country-events") {
+      const country = url.searchParams.get("country") || "";
+      if (!country) return err("Query parameter 'country' is required");
+
+      const { data, error: e } = await supabase
+        .from("historical_events")
+        .select("id, title, slug, year, year_label, category, significance, image_url, description, location:locations!inner(id, name, country)")
+        .ilike("locations.country", country)
+        .order("year", { ascending: true, nullsFirst: false })
+        .limit(100);
+
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
+      return json(data);
+    }
+
+    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events", 404);
 
   } catch (e) {
     console.error("API error:", e);
