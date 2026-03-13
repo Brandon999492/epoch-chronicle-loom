@@ -132,7 +132,7 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
 
 export const searchApi = {
   search: (filters: SearchFilters) =>
-    apiFetch<GlobalSearchResults>("search", filters as Record<string, string | number>),
+    apiFetch<GlobalSearchResults>("search", filters as unknown as Record<string, string | number>),
 
   graph: {
     event: (id: string) => apiFetch<GraphEventData>(`graph/event/${id}`),
