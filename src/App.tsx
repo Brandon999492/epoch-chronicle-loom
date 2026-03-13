@@ -66,6 +66,7 @@ const App = () => (
             <Route path="/knowledge-graph/:entityType/:entityId" element={<KnowledgeGraphPage />} />
             <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="/admin/seed-data" element={<SeedDataPage />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
