@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,7 +30,7 @@ import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
 import SeedDataPage from "./pages/SeedDataPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
-import HistoryMapPage from "./pages/HistoryMapPage";
+const HistoryMapPage = React.lazy(() => import("./pages/HistoryMapPage"));
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,7 +69,7 @@ const App = () => (
             <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="/admin/seed-data" element={<SeedDataPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/map" element={<HistoryMapPage />} />
+            <Route path="/map" element={<Suspense fallback={<div className="min-h-screen bg-background" />}><HistoryMapPage /></Suspense>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
