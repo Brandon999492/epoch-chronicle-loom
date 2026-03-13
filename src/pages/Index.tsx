@@ -6,8 +6,9 @@ import { ExternalResources } from "@/components/ExternalResources";
 import { TrendingTopics, FeaturedEventsCarousel } from "@/components/TrendingAndCarousel";
 import { SearchBar } from "@/components/SearchBar";
 import { motion } from "framer-motion";
-import { ArrowDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowDown, Globe } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import heroBg from "@/assets/hero-bg.jpg";
 
 const quickTags = [
