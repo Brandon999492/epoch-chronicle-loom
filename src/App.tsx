@@ -25,6 +25,8 @@ import RoyalProfilePage from "./pages/RoyalProfilePage";
 import RoyalFamilyTree from "./pages/RoyalFamilyTree";
 import HistoryAiPage from "./pages/HistoryAiPage";
 import HistoryVideoStudioPage from "./pages/HistoryVideoStudioPage";
+import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
+import MediaLibraryPage from "./pages/MediaLibraryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +60,9 @@ const App = () => (
             <Route path="/royals/family-tree" element={<RoyalFamilyTree />} />
             <Route path="/royals/:houseId" element={<RoyalHouseDetail />} />
             <Route path="/royals/:houseId/:royalId" element={<RoyalProfilePage />} />
+            <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
+            <Route path="/knowledge-graph/:entityType/:entityId" element={<KnowledgeGraphPage />} />
+            <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
