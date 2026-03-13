@@ -1,5 +1,5 @@
 import { Header } from "@/components/Header";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { searchApi } from "@/services/searchApi";
 import { useState } from "react";
@@ -340,7 +340,6 @@ const GraphSkeleton = () => (
 
 // ===== Knowledge Graph Landing =====
 const KnowledgeGraphLanding = () => {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "events" | "figures" | "dynasties">("all");
 
@@ -372,7 +371,9 @@ const KnowledgeGraphLanding = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && searchQuery.trim() && navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
               placeholder="Search for an event, person, or dynasty…"
               className="w-full rounded-xl bg-secondary/80 border border-border px-5 py-3.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
@@ -484,15 +485,23 @@ const KnowledgeGraphLanding = () => {
       {searchQuery.trim().length < 2 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {[
-            { icon: Scroll, title: "Events", desc: "Battles, treaties, discoveries, and pivotal moments", path: "/search?q=battle" },
-            { icon: Users, title: "Figures", desc: "Kings, scientists, explorers, and revolutionaries", path: "/search?q=king" },
-            { icon: Landmark, title: "Dynasties", desc: "Royal houses, empires, and ruling families", path: "/search?q=dynasty" },
-          ].map(({ icon: Icon, title, desc, path }) => (
-            <Link key={title} to={path} className="bg-card-gradient border border-border rounded-xl p-5 text-center hover:border-primary/40 transition-all group cursor-pointer">
+            { icon: Scroll, title: "Events", desc: "Battles, treaties, discoveries, and pivotal moments", seedQuery: "battle", tab: "events" as const },
+            { icon: Users, title: "Figures", desc: "Kings, scientists, explorers, and revolutionaries", seedQuery: "king", tab: "figures" as const },
+            { icon: Landmark, title: "Dynasties", desc: "Royal houses, empires, and ruling families", seedQuery: "dynasty", tab: "dynasties" as const },
+          ].map(({ icon: Icon, title, desc, seedQuery, tab }) => (
+            <button
+              key={title}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab);
+                setSearchQuery(seedQuery);
+              }}
+              className="w-full bg-card-gradient border border-border rounded-xl p-5 text-center hover:border-primary/40 transition-all group cursor-pointer"
+            >
               <Icon className="h-8 w-8 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
               <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors">{title}</h3>
               <p className="text-xs text-muted-foreground mt-1">{desc}</p>
-            </Link>
+            </button>
           ))}
         </div>
       )}
