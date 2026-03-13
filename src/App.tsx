@@ -68,6 +68,7 @@ const App = () => (
             <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="/admin/seed-data" element={<SeedDataPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/map" element={<HistoryMapPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
