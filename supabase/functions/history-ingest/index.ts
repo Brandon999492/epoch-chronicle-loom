@@ -27,6 +27,8 @@ const VALID_CATEGORIES = [
   "war", "battle", "politics", "science", "discovery", "religion", "monarchy",
   "revolution", "cultural", "economic", "disaster", "exploration", "legal",
   "technology", "philosophy", "art", "architecture", "general",
+  "culture", "geology", "evolution", "mystery", "ritual", "serial-killer",
+  "treaty", "assassination",
 ];
 
 function inferCategory(title: string, description: string): string {
