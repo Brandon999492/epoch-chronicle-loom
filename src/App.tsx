@@ -29,7 +29,7 @@ import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
 import SeedDataPage from "./pages/SeedDataPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
-import HistoryMapPage from "./pages/HistoryMapPage";
+const HistoryMapPage = React.lazy(() => import("./pages/HistoryMapPage"));
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
