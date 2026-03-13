@@ -951,6 +951,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      global_search: {
+        Args: {
+          filter_category?: string
+          filter_civilization_id?: string
+          filter_location_id?: string
+          filter_period_id?: string
+          filter_year_from?: number
+          filter_year_to?: number
+          result_limit?: number
+          result_offset?: number
+          search_query: string
+        }
+        Returns: Json
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
