@@ -216,21 +216,134 @@ Deno.serve(async (req) => {
       return json({ data, total: count, page, limit });
     }
 
-    // ===== SEARCH (cross-entity) =====
+    // ===== SEARCH (cross-entity with trigram similarity) =====
     if (resource === "search") {
       if (!search) return err("Query parameter 'q' is required");
 
-      const [eventsRes, figuresRes, dynastiesRes] = await Promise.all([
-        supabase.from("historical_events").select("id, title, year_label, category, image_url").ilike("title", `%${search}%`).limit(10),
-        supabase.from("historical_figures").select("id, name, title, birth_label, death_label, image_url").ilike("name", `%${search}%`).limit(10),
-        supabase.from("dynasties").select("id, name, start_label, end_label").ilike("name", `%${search}%`).limit(10),
-      ]);
+      const searchLimit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
+      const searchOffset = (page - 1) * searchLimit;
+      const civId = url.searchParams.get("civilization_id") || null;
 
-      return json({
-        events: eventsRes.data || [],
-        figures: figuresRes.data || [],
-        dynasties: dynastiesRes.data || [],
+      const { data: searchData, error: searchErr } = await supabase.rpc("global_search", {
+        search_query: search,
+        filter_category: category || null,
+        filter_year_from: yearFrom ? parseInt(yearFrom) : null,
+        filter_year_to: yearTo ? parseInt(yearTo) : null,
+        filter_location_id: locationId || null,
+        filter_civilization_id: civId,
+        filter_period_id: periodId || null,
+        result_limit: searchLimit,
+        result_offset: searchOffset,
       });
+
+      if (searchErr) {
+        console.error("Search error:", searchErr.message);
+        return err("An error occurred processing your search.", 500);
+      }
+
+      return json(searchData);
+    }
+
+    // ===== KNOWLEDGE GRAPH (entity connections) =====
+    if (resource === "graph") {
+      const entityType = pathParts[1] || "";
+      const entityId = pathParts[2] || "";
+
+      if (!entityType || !entityId) return err("Usage: graph/{entity_type}/{entity_id}");
+
+      if (entityType === "event") {
+        const [eventRes, figuresRes, mediaRes] = await Promise.all([
+          supabase.from("historical_events")
+            .select("*, location:locations(*), time_period:time_periods(*), civilization:civilizations(*)")
+            .eq("id", entityId).single(),
+          supabase.from("event_figures")
+            .select("*, figure:historical_figures(id, name, slug, title, image_url, birth_label, death_label)")
+            .eq("event_id", entityId),
+          supabase.from("event_media")
+            .select("*, media:media_assets(id, url, thumbnail_url, media_type, title, description)")
+            .eq("event_id", entityId).order("display_order"),
+        ]);
+        if (eventRes.error) return err("Event not found", 404);
+
+        // Find related events (same location, period, or civilization)
+        let relatedQuery = supabase.from("historical_events")
+          .select("id, title, slug, year_label, category, image_url")
+          .neq("id", entityId).limit(10);
+        
+        if (eventRes.data.location_id) relatedQuery = relatedQuery.or(`location_id.eq.${eventRes.data.location_id},civilization_id.eq.${eventRes.data.civilization_id || '00000000-0000-0000-0000-000000000000'},time_period_id.eq.${eventRes.data.time_period_id || '00000000-0000-0000-0000-000000000000'}`);
+        const { data: relatedEvents } = await relatedQuery;
+
+        return json({
+          entity: eventRes.data,
+          figures: figuresRes.data || [],
+          media: mediaRes.data || [],
+          related_events: relatedEvents || [],
+        });
+      }
+
+      if (entityType === "figure") {
+        const [figureRes, eventsRes, relsRes, mediaRes] = await Promise.all([
+          supabase.from("historical_figures")
+            .select("*, dynasty:dynasties(*, civilization:civilizations(id,name)), birth_location:locations!historical_figures_birth_location_id_fkey(*), death_location:locations!historical_figures_death_location_id_fkey(*)")
+            .eq("id", entityId).single(),
+          supabase.from("event_figures")
+            .select("role, event:historical_events(id, title, slug, year_label, category, image_url)")
+            .eq("figure_id", entityId),
+          supabase.from("figure_relationships")
+            .select("relationship_type, related_figure:historical_figures!figure_relationships_related_figure_id_fkey(id, name, slug, title, image_url)")
+            .eq("figure_id", entityId),
+          supabase.from("figure_media")
+            .select("*, media:media_assets(id, url, thumbnail_url, media_type, title)")
+            .eq("figure_id", entityId).order("display_order"),
+        ]);
+        if (figureRes.error) return err("Figure not found", 404);
+
+        return json({
+          entity: figureRes.data,
+          events: eventsRes.data || [],
+          relationships: relsRes.data || [],
+          media: mediaRes.data || [],
+        });
+      }
+
+      if (entityType === "dynasty") {
+        const [dynastyRes, figuresRes] = await Promise.all([
+          supabase.from("dynasties")
+            .select("*, civilization:civilizations(*), location:locations(*)")
+            .eq("id", entityId).single(),
+          supabase.from("historical_figures")
+            .select("id, name, slug, title, image_url, birth_label, death_label")
+            .eq("dynasty_id", entityId)
+            .order("birth_year", { ascending: true, nullsFirst: false }),
+        ]);
+        if (dynastyRes.error) return err("Dynasty not found", 404);
+
+        // Find events linked to figures in this dynasty
+        const figureIds = (figuresRes.data || []).map((f: any) => f.id);
+        let dynastyEvents: any[] = [];
+        if (figureIds.length > 0) {
+          const { data: eventLinks } = await supabase
+            .from("event_figures")
+            .select("event:historical_events(id, title, slug, year_label, category)")
+            .in("figure_id", figureIds.slice(0, 50));
+          dynastyEvents = (eventLinks || []).map((el: any) => el.event).filter(Boolean);
+          // Deduplicate
+          const seen = new Set<string>();
+          dynastyEvents = dynastyEvents.filter((e: any) => {
+            if (seen.has(e.id)) return false;
+            seen.add(e.id);
+            return true;
+          });
+        }
+
+        return json({
+          entity: dynastyRes.data,
+          figures: figuresRes.data || [],
+          events: dynastyEvents,
+        });
+      }
+
+      return err("Unknown entity type. Available: event, figure, dynasty");
     }
 
     return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search", 404);
