@@ -340,7 +340,6 @@ const GraphSkeleton = () => (
 
 // ===== Knowledge Graph Landing =====
 const KnowledgeGraphLanding = () => {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "events" | "figures" | "dynasties">("all");
 
@@ -372,7 +371,9 @@ const KnowledgeGraphLanding = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && searchQuery.trim() && navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
               placeholder="Search for an event, person, or dynasty…"
               className="w-full rounded-xl bg-secondary/80 border border-border px-5 py-3.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
