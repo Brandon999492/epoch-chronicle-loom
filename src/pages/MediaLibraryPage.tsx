@@ -7,7 +7,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Image as ImageIcon, Film, Music, FileText, Upload, Search, Filter,
-  Grid3X3, List, X, ChevronDown, ExternalLink, Download, ZoomIn
+  Grid3X3, List, X, ChevronDown, ExternalLink, Download, ZoomIn, Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
