@@ -8,13 +8,13 @@ const navItems = [
   { label: "Home", path: "/" },
   { label: "Timeline", path: "/timeline" },
   { label: "Archive", path: "/archive" },
+  { label: "Search", path: "/search" },
+  { label: "Knowledge Graph", path: "/knowledge-graph" },
+  { label: "Media", path: "/media-library" },
   { label: "British Royals", path: "/royals" },
   { label: "History AI", path: "/history-ai" },
   { label: "Video Studio", path: "/video-studio" },
-  { label: "Add History", path: "/add-history" },
   { label: "Journal", path: "/journal" },
-  { label: "Bookmarks", path: "/bookmarks" },
-  { label: "Search", path: "/search" },
 ];
 
 export function Header() {
