@@ -9,6 +9,7 @@ const navItems = [
   { label: "Timeline", path: "/timeline" },
   { label: "Archive", path: "/archive" },
   { label: "Search", path: "/search" },
+  { label: "History Map", path: "/map" },
   { label: "Knowledge Graph", path: "/knowledge-graph" },
   { label: "Media", path: "/media-library" },
   { label: "British Royals", path: "/royals" },
