@@ -9,8 +9,8 @@ import { allEvents, categoryLabels, eras } from "@/data/historicalData";
 import { categoryColors } from "@/data/types";
 import ImageSlideshow from "@/components/ImageSlideshow";
 
-// Check if a string looks like a UUID
-const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+// Check if a string is a legacy static-data ID (short, like "an1", "med3")
+const isLegacyStaticId = (s: string) => /^[a-z]{1,6}\d{1,3}$/i.test(s);
 
 /** Database-backed event detail */
 const DbEventDetail = ({ eventId }: { eventId: string }) => {
