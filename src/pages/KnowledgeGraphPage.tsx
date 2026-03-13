@@ -342,6 +342,20 @@ const GraphSkeleton = () => (
 const KnowledgeGraphLanding = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "events" | "figures" | "dynasties">("all");
+
+  const { data: searchResults, isLoading: searchLoading } = useQuery({
+    queryKey: ["kg-search", searchQuery],
+    queryFn: () => searchApi.search({ q: searchQuery }),
+    enabled: searchQuery.trim().length >= 2,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const hasResults = searchResults && (
+    searchResults.events?.length > 0 ||
+    searchResults.figures?.length > 0 ||
+    searchResults.dynasties?.length > 0
+  );
 
   return (
     <div className="space-y-8">
@@ -366,19 +380,122 @@ const KnowledgeGraphLanding = () => {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-        {[
-          { icon: Scroll, title: "Events", desc: "Battles, treaties, discoveries, and pivotal moments" },
-          { icon: Users, title: "Figures", desc: "Kings, scientists, explorers, and revolutionaries" },
-          { icon: Landmark, title: "Dynasties", desc: "Royal houses, empires, and ruling families" },
-        ].map(({ icon: Icon, title, desc }) => (
-          <div key={title} className="bg-card-gradient border border-border rounded-xl p-5 text-center">
-            <Icon className="h-8 w-8 text-primary mx-auto mb-2" />
-            <h3 className="font-display font-semibold text-foreground">{title}</h3>
-            <p className="text-xs text-muted-foreground mt-1">{desc}</p>
-          </div>
-        ))}
-      </div>
+      {/* Inline Search Results */}
+      {searchQuery.trim().length >= 2 && (
+        <div className="max-w-3xl mx-auto">
+          {searchLoading && (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
+            </div>
+          )}
+          {!searchLoading && !hasResults && (
+            <p className="text-center text-muted-foreground py-8">No results found for "{searchQuery}"</p>
+          )}
+          {!searchLoading && hasResults && (
+            <div className="space-y-4">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="events">Events ({searchResults.events?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="figures">Figures ({searchResults.figures?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="dynasties">Dynasties ({searchResults.dynasties?.length || 0})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="all" className="space-y-2">
+                  {searchResults.events?.slice(0, 5).map((e: any) => (
+                    <Link key={e.id} to={`/knowledge-graph/event/${e.id}`} className="flex items-center gap-3 bg-secondary/30 border border-border rounded-lg px-4 py-3 hover:border-primary/40 transition-all group">
+                      <Scroll className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">{e.title}</p>
+                        {e.year_label && <p className="text-xs text-muted-foreground">{e.year_label}</p>}
+                      </div>
+                      {e.category && <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{e.category}</Badge>}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </Link>
+                  ))}
+                  {searchResults.figures?.slice(0, 5).map((f: any) => (
+                    <Link key={f.id} to={`/knowledge-graph/figure/${f.id}`} className="flex items-center gap-3 bg-secondary/30 border border-border rounded-lg px-4 py-3 hover:border-primary/40 transition-all group">
+                      <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">{f.name}</p>
+                        {f.title && <p className="text-xs text-muted-foreground">{f.title}</p>}
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </Link>
+                  ))}
+                  {searchResults.dynasties?.slice(0, 5).map((d: any) => (
+                    <Link key={d.id} to={`/knowledge-graph/dynasty/${d.id}`} className="flex items-center gap-3 bg-secondary/30 border border-border rounded-lg px-4 py-3 hover:border-primary/40 transition-all group">
+                      <Landmark className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">{d.name}</p>
+                        {d.start_label && <p className="text-xs text-muted-foreground">{d.start_label} – {d.end_label}</p>}
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </Link>
+                  ))}
+                </TabsContent>
+
+                <TabsContent value="events" className="space-y-2">
+                  {searchResults.events?.map((e: any) => (
+                    <Link key={e.id} to={`/knowledge-graph/event/${e.id}`} className="flex items-center gap-3 bg-secondary/30 border border-border rounded-lg px-4 py-3 hover:border-primary/40 transition-all group">
+                      <Scroll className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">{e.title}</p>
+                        {e.year_label && <p className="text-xs text-muted-foreground">{e.year_label}</p>}
+                      </div>
+                      {e.category && <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{e.category}</Badge>}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </Link>
+                  ))}
+                </TabsContent>
+
+                <TabsContent value="figures" className="space-y-2">
+                  {searchResults.figures?.map((f: any) => (
+                    <Link key={f.id} to={`/knowledge-graph/figure/${f.id}`} className="flex items-center gap-3 bg-secondary/30 border border-border rounded-lg px-4 py-3 hover:border-primary/40 transition-all group">
+                      <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">{f.name}</p>
+                        {f.title && <p className="text-xs text-muted-foreground">{f.title}</p>}
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </Link>
+                  ))}
+                </TabsContent>
+
+                <TabsContent value="dynasties" className="space-y-2">
+                  {searchResults.dynasties?.map((d: any) => (
+                    <Link key={d.id} to={`/knowledge-graph/dynasty/${d.id}`} className="flex items-center gap-3 bg-secondary/30 border border-border rounded-lg px-4 py-3 hover:border-primary/40 transition-all group">
+                      <Landmark className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">{d.name}</p>
+                        {d.start_label && <p className="text-xs text-muted-foreground">{d.start_label} – {d.end_label}</p>}
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </Link>
+                  ))}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Category Cards - only show when not searching */}
+      {searchQuery.trim().length < 2 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+          {[
+            { icon: Scroll, title: "Events", desc: "Battles, treaties, discoveries, and pivotal moments", path: "/search?q=battle" },
+            { icon: Users, title: "Figures", desc: "Kings, scientists, explorers, and revolutionaries", path: "/search?q=king" },
+            { icon: Landmark, title: "Dynasties", desc: "Royal houses, empires, and ruling families", path: "/search?q=dynasty" },
+          ].map(({ icon: Icon, title, desc, path }) => (
+            <Link key={title} to={path} className="bg-card-gradient border border-border rounded-xl p-5 text-center hover:border-primary/40 transition-all group cursor-pointer">
+              <Icon className="h-8 w-8 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
+              <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors">{title}</h3>
+              <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

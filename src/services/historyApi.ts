@@ -150,7 +150,12 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
       if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
     });
   }
-  const resp = await fetch(url.toString());
+  const resp = await fetch(url.toString(), {
+    headers: {
+      "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      "Content-Type": "application/json",
+    },
+  });
   if (!resp.ok) {
     const errData = await resp.json().catch(() => ({}));
     throw new Error(errData.error || `API error ${resp.status}`);
