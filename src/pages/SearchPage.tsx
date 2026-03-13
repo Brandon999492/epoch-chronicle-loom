@@ -268,7 +268,7 @@ const SearchPage = () => {
               {(activeTab === "all" || activeTab === "events") && results?.events?.map((event) => (
                 <Link
                   key={`event-${event.id}`}
-                  to={`/event/${event.slug || event.id}`}
+                  to={`/event/${event.id}`}
                   className="block bg-card-gradient border border-border rounded-lg p-5 hover:border-primary/30 transition-all group"
                 >
                   <div className="flex items-start gap-4">
