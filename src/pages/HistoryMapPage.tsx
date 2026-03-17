@@ -173,15 +173,17 @@ function yearLabel(year: number): string {
 export default function HistoryMapPage() {
   const { user } = useAuth();
   const [yearRange, setYearRange] = useState<[number, number]>([MIN_YEAR, MAX_YEAR]);
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [highlightedLayer, setHighlightedLayer] = useState<L.Layer | null>(null);
 
+  const { data: categoryList } = useCategories();
+
   const { data: events, isLoading, refetch: refetchEvents } = useMapEvents({
-    category: selectedCategory,
+    categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     year_from: yearRange[0],
     year_to: yearRange[1],
   });
