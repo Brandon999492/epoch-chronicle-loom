@@ -46,20 +46,35 @@ interface MapEvent {
   };
 }
 
-const CATEGORIES = [
-  { value: "war", label: "War", color: "hsl(0, 62%, 50%)" },
-  { value: "science", label: "Science", color: "hsl(200, 70%, 50%)" },
-  { value: "monarchy", label: "Monarchy", color: "hsl(280, 60%, 55%)" },
-  { value: "discovery", label: "Discovery", color: "hsl(140, 60%, 45%)" },
-  { value: "religion", label: "Religion", color: "hsl(40, 70%, 55%)" },
-  { value: "politics", label: "Politics", color: "hsl(220, 60%, 50%)" },
-  { value: "culture", label: "Culture", color: "hsl(320, 50%, 55%)" },
-  { value: "disaster", label: "Disaster", color: "hsl(25, 80%, 50%)" },
-  { value: "general", label: "General", color: "hsl(230, 15%, 55%)" },
-];
+// Dynamic color generation for categories
+const CATEGORY_COLORS: Record<string, string> = {
+  war: "hsl(0, 62%, 50%)",
+  science: "hsl(200, 70%, 50%)",
+  politics: "hsl(220, 60%, 50%)",
+  discovery: "hsl(140, 60%, 45%)",
+  religion: "hsl(40, 70%, 55%)",
+  culture: "hsl(320, 50%, 55%)",
+  geology: "hsl(25, 60%, 45%)",
+  evolution: "hsl(120, 50%, 40%)",
+  mystery: "hsl(270, 70%, 45%)",
+  ritual: "hsl(310, 60%, 50%)",
+  assassination: "hsl(0, 70%, 40%)",
+  treaty: "hsl(170, 50%, 50%)",
+  "serial-killer": "hsl(350, 80%, 35%)",
+  general: "hsl(230, 15%, 55%)",
+};
 
 function getCategoryColor(category: string | null): string {
-  return CATEGORIES.find((c) => c.value === category)?.color ?? "hsl(32, 50%, 65%)";
+  if (!category) return "hsl(32, 50%, 65%)";
+  if (CATEGORY_COLORS[category]) return CATEGORY_COLORS[category];
+  // Generate deterministic color for unknown categories
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) hash = category.charCodeAt(i) + ((hash << 5) - hash);
+  return `hsl(${Math.abs(hash) % 360}, 55%, 50%)`;
+}
+
+function formatCategoryLabel(cat: string): string {
+  return cat.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function createCategoryIcon(category: string | null) {
@@ -76,12 +91,31 @@ function createCategoryIcon(category: string | null) {
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
 const TOPO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-function useMapEvents(filters: { category?: string; year_from?: number; year_to?: number }) {
+interface CategoryInfo {
+  name: string;
+  count: number;
+}
+
+function useCategories() {
+  return useQuery<CategoryInfo[]>({
+    queryKey: ["map-categories"],
+    queryFn: async () => {
+      const resp = await fetch(`${API_BASE}/categories`, {
+        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
+      });
+      if (!resp.ok) throw new Error("Failed to fetch categories");
+      return resp.json();
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+function useMapEvents(filters: { categories?: string[]; year_from?: number; year_to?: number }) {
   return useQuery<MapEvent[]>({
     queryKey: ["map-events", filters],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.category) params.set("category", filters.category);
+      if (filters.categories && filters.categories.length > 0) params.set("categories", filters.categories.join(","));
       if (filters.year_from !== undefined) params.set("year_from", String(filters.year_from));
       if (filters.year_to !== undefined) params.set("year_to", String(filters.year_to));
       const resp = await fetch(`${API_BASE}/map-events?${params}`, {
@@ -139,15 +173,17 @@ function yearLabel(year: number): string {
 export default function HistoryMapPage() {
   const { user } = useAuth();
   const [yearRange, setYearRange] = useState<[number, number]>([MIN_YEAR, MAX_YEAR]);
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [highlightedLayer, setHighlightedLayer] = useState<L.Layer | null>(null);
 
+  const { data: categoryList } = useCategories();
+
   const { data: events, isLoading, refetch: refetchEvents } = useMapEvents({
-    category: selectedCategory,
+    categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     year_from: yearRange[0],
     year_to: yearRange[1],
   });
@@ -271,20 +307,36 @@ export default function HistoryMapPage() {
                 </div>
 
                 <div>
-                  <span className="text-xs text-muted-foreground block mb-2">Category</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    <Badge variant={!selectedCategory ? "default" : "outline"} className="cursor-pointer text-[10px] px-2 py-0.5" onClick={() => setSelectedCategory(undefined)}>All</Badge>
-                    {CATEGORIES.map((cat) => (
-                      <Badge
-                        key={cat.value}
-                        variant={selectedCategory === cat.value ? "default" : "outline"}
-                        className="cursor-pointer text-[10px] px-2 py-0.5"
-                        onClick={() => setSelectedCategory(selectedCategory === cat.value ? undefined : cat.value)}
-                        style={selectedCategory === cat.value ? { backgroundColor: cat.color, borderColor: cat.color } : {}}
-                      >
-                        {cat.label}
-                      </Badge>
-                    ))}
+                  <span className="text-xs text-muted-foreground block mb-2">
+                    Categories {selectedCategories.length > 0 && `(${selectedCategories.length})`}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                    <Badge
+                      variant={selectedCategories.length === 0 ? "default" : "outline"}
+                      className="cursor-pointer text-[10px] px-2 py-0.5"
+                      onClick={() => setSelectedCategories([])}
+                    >
+                      All
+                    </Badge>
+                    {(categoryList || []).map((cat) => {
+                      const isSelected = selectedCategories.includes(cat.name);
+                      const color = getCategoryColor(cat.name);
+                      return (
+                        <Badge
+                          key={cat.name}
+                          variant={isSelected ? "default" : "outline"}
+                          className="cursor-pointer text-[10px] px-2 py-0.5"
+                          onClick={() => {
+                            setSelectedCategories(prev =>
+                              isSelected ? prev.filter(c => c !== cat.name) : [...prev, cat.name]
+                            );
+                          }}
+                          style={isSelected ? { backgroundColor: color, borderColor: color } : {}}
+                        >
+                          {formatCategoryLabel(cat.name)} ({cat.count})
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -351,9 +351,27 @@ Deno.serve(async (req) => {
       return err("Unknown entity type. Available: event, figure, dynasty");
     }
 
+    // ===== CATEGORIES (distinct values) =====
+    if (resource === "categories") {
+      const { data, error: e } = await supabase
+        .from("historical_events")
+        .select("category")
+        .not("category", "is", null);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
+      const counts = new Map<string, number>();
+      for (const row of data || []) {
+        if (row.category) counts.set(row.category, (counts.get(row.category) || 0) + 1);
+      }
+      const categories = Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+      return json(categories);
+    }
+
     // ===== MAP EVENTS (events with location coordinates) =====
     if (resource === "map-events") {
       const country = url.searchParams.get("country") || "";
+      const categories = url.searchParams.get("categories") || ""; // comma-separated
       
       let query = supabase
         .from("historical_events")
@@ -362,7 +380,17 @@ Deno.serve(async (req) => {
         .not("locations.longitude", "is", null);
 
       if (search) query = query.ilike("title", `%${search}%`);
-      if (category) query = query.eq("category", category);
+      // Support both single category and multi-category
+      if (categories) {
+        const catList = categories.split(",").map(c => c.trim()).filter(Boolean);
+        if (catList.length === 1) {
+          query = query.eq("category", catList[0]);
+        } else if (catList.length > 1) {
+          query = query.in("category", catList);
+        }
+      } else if (category) {
+        query = query.eq("category", category);
+      }
       if (yearFrom) query = query.gte("year", parseInt(yearFrom));
       if (yearTo) query = query.lte("year", parseInt(yearTo));
       if (country) query = query.eq("locations.country", country);
@@ -400,7 +428,7 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events", 404);
+    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events, categories", 404);
 
   } catch (e) {
     console.error("API error:", e);
