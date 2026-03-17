@@ -432,33 +432,60 @@ export default function HistoryMapPage() {
               <GeoJSON data={geoData} style={countryStyle} onEachFeature={onEachCountry} />
             )}
 
-            {filteredEvents.map((event) => (
-              <Marker key={event.id} position={[event.location.latitude, event.location.longitude]} icon={createCategoryIcon(event.category)}>
-                <Popup className="history-map-popup" maxWidth={280} minWidth={220}>
-                  <div className="p-1">
-                    {event.image_url && (
-                      <img src={event.image_url} alt={event.title} className="w-full h-28 object-cover rounded-md mb-2" loading="lazy" />
-                    )}
-                    <h3 className="font-bold text-sm text-gray-900 leading-tight mb-1">{event.title}</h3>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      {event.year_label && <span className="text-[10px] text-gray-500">{event.year_label}</span>}
-                      {event.category && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: getCategoryColor(event.category) }}>
-                          {event.category}
-                        </span>
+            <MarkerClusterGroup
+              chunkedLoading
+              maxClusterRadius={50}
+              spiderfyOnMaxZoom
+              showCoverageOnHover={false}
+              iconCreateFunction={(cluster: any) => {
+                const count = cluster.getChildCount();
+                let size = "small";
+                let dim = 36;
+                if (count >= 100) { size = "large"; dim = 52; }
+                else if (count >= 10) { size = "medium"; dim = 44; }
+                return L.divIcon({
+                  html: `<div style="
+                    background: hsl(var(--primary) / 0.85);
+                    width: ${dim}px; height: ${dim}px;
+                    border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                    color: white; font-weight: 700; font-size: ${count >= 100 ? 14 : 12}px;
+                    border: 3px solid hsl(var(--primary));
+                    box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+                  ">${count}</div>`,
+                  className: `marker-cluster marker-cluster-${size}`,
+                  iconSize: L.point(dim, dim),
+                });
+              }}
+            >
+              {filteredEvents.map((event) => (
+                <Marker key={event.id} position={[event.location.latitude, event.location.longitude]} icon={createCategoryIcon(event.category)}>
+                  <Popup className="history-map-popup" maxWidth={280} minWidth={220}>
+                    <div className="p-1">
+                      {event.image_url && (
+                        <img src={event.image_url} alt={event.title} className="w-full h-28 object-cover rounded-md mb-2" loading="lazy" />
                       )}
+                      <h3 className="font-bold text-sm text-gray-900 leading-tight mb-1">{event.title}</h3>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {event.year_label && <span className="text-[10px] text-gray-500">{event.year_label}</span>}
+                        {event.category && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: getCategoryColor(event.category) }}>
+                            {event.category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-600 line-clamp-3 mb-2">{event.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400">📍 {event.location.name}</span>
+                        <Link to={`/event/${event.id}`} className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5">
+                          View <ExternalLink className="w-2.5 h-2.5" />
+                        </Link>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-gray-600 line-clamp-3 mb-2">{event.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-gray-400">📍 {event.location.name}</span>
-                      <Link to={`/event/${event.id}`} className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5">
-                        View <ExternalLink className="w-2.5 h-2.5" />
-                      </Link>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+                  </Popup>
+                </Marker>
+              ))}
+            </MarkerClusterGroup>
           </MapContainer>
         )}
       </div>
