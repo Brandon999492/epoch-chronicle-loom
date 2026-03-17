@@ -428,7 +428,7 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events", 404);
+    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events, categories", 404);
 
   } catch (e) {
     console.error("API error:", e);
