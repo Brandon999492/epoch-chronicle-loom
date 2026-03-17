@@ -307,20 +307,36 @@ export default function HistoryMapPage() {
                 </div>
 
                 <div>
-                  <span className="text-xs text-muted-foreground block mb-2">Category</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    <Badge variant={!selectedCategory ? "default" : "outline"} className="cursor-pointer text-[10px] px-2 py-0.5" onClick={() => setSelectedCategory(undefined)}>All</Badge>
-                    {CATEGORIES.map((cat) => (
-                      <Badge
-                        key={cat.value}
-                        variant={selectedCategory === cat.value ? "default" : "outline"}
-                        className="cursor-pointer text-[10px] px-2 py-0.5"
-                        onClick={() => setSelectedCategory(selectedCategory === cat.value ? undefined : cat.value)}
-                        style={selectedCategory === cat.value ? { backgroundColor: cat.color, borderColor: cat.color } : {}}
-                      >
-                        {cat.label}
-                      </Badge>
-                    ))}
+                  <span className="text-xs text-muted-foreground block mb-2">
+                    Categories {selectedCategories.length > 0 && `(${selectedCategories.length})`}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                    <Badge
+                      variant={selectedCategories.length === 0 ? "default" : "outline"}
+                      className="cursor-pointer text-[10px] px-2 py-0.5"
+                      onClick={() => setSelectedCategories([])}
+                    >
+                      All
+                    </Badge>
+                    {(categoryList || []).map((cat) => {
+                      const isSelected = selectedCategories.includes(cat.name);
+                      const color = getCategoryColor(cat.name);
+                      return (
+                        <Badge
+                          key={cat.name}
+                          variant={isSelected ? "default" : "outline"}
+                          className="cursor-pointer text-[10px] px-2 py-0.5"
+                          onClick={() => {
+                            setSelectedCategories(prev =>
+                              isSelected ? prev.filter(c => c !== cat.name) : [...prev, cat.name]
+                            );
+                          }}
+                          style={isSelected ? { backgroundColor: color, borderColor: color } : {}}
+                        >
+                          {formatCategoryLabel(cat.name)} ({cat.count})
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
 
