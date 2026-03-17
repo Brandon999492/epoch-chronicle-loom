@@ -167,11 +167,18 @@ Return ONLY the JSON array, no markdown fences.`;
       }
     }
 
+    // Count remaining
+    const { count: remaining } = await supabase
+      .from("historical_events")
+      .select("id", { count: "exact", head: true })
+      .is("location_id", null);
+
     return json({
       message: `Enrichment complete`,
       enriched: totalEnriched,
       total_processed: events.length,
       locations_created: locationCache.size,
+      remaining: (remaining || 0) - totalEnriched,
     });
   } catch (e) {
     console.error("Geo-enrich error:", e);
