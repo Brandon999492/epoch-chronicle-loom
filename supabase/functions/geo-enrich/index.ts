@@ -43,15 +43,16 @@ Deno.serve(async (req) => {
   if (!isAdmin) return json({ error: "Admin access required" }, 403);
 
   try {
-    // Get events without location_id
+    // Get events without location_id, limited per invocation to avoid timeout
+    const batchLimit = 100; // Process up to 100 events per invocation
     const { data: events, error: evErr } = await supabase
       .from("historical_events")
       .select("id, title, description, year_label, category")
       .is("location_id", null)
-      .limit(200);
+      .limit(batchLimit);
 
     if (evErr) return json({ error: evErr.message }, 500);
-    if (!events || events.length === 0) return json({ message: "All events already have locations", enriched: 0 });
+    if (!events || events.length === 0) return json({ message: "All events already have locations", enriched: 0, remaining: 0 });
 
     let totalEnriched = 0;
     const locationCache = new Map<string, string>(); // name -> id
@@ -166,11 +167,18 @@ Return ONLY the JSON array, no markdown fences.`;
       }
     }
 
+    // Count remaining
+    const { count: remaining } = await supabase
+      .from("historical_events")
+      .select("id", { count: "exact", head: true })
+      .is("location_id", null);
+
     return json({
       message: `Enrichment complete`,
       enriched: totalEnriched,
       total_processed: events.length,
       locations_created: locationCache.size,
+      remaining: (remaining || 0) - totalEnriched,
     });
   } catch (e) {
     console.error("Geo-enrich error:", e);

@@ -367,12 +367,21 @@ Deno.serve(async (req) => {
       if (yearTo) query = query.lte("year", parseInt(yearTo));
       if (country) query = query.eq("locations.country", country);
 
-      const { data, error: e } = await query
-        .order("year", { ascending: true, nullsFirst: false })
-        .limit(1000);
-
-      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
-      return json(data);
+      // Fetch all matching events (paginate to avoid 1000-row limit)
+      let allData: any[] = [];
+      let rangeFrom = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data: batch, error: e } = await query
+          .order("year", { ascending: true, nullsFirst: false })
+          .range(rangeFrom, rangeFrom + batchSize - 1);
+        if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
+        if (!batch || batch.length === 0) break;
+        allData = allData.concat(batch);
+        if (batch.length < batchSize) break;
+        rangeFrom += batchSize;
+      }
+      return json(allData);
     }
 
     // ===== COUNTRY EVENTS (events for a specific country) =====
