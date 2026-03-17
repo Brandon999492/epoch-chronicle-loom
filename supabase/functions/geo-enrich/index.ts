@@ -43,15 +43,25 @@ Deno.serve(async (req) => {
   if (!isAdmin) return json({ error: "Admin access required" }, 403);
 
   try {
-    // Get events without location_id
-    const { data: events, error: evErr } = await supabase
-      .from("historical_events")
-      .select("id, title, description, year_label, category")
-      .is("location_id", null)
-      .limit(200);
+    // Get ALL events without location_id (no limit)
+    let allEvents: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data: batch, error: evErr } = await supabase
+        .from("historical_events")
+        .select("id, title, description, year_label, category")
+        .is("location_id", null)
+        .range(from, from + pageSize - 1);
+      if (evErr) return json({ error: evErr.message }, 500);
+      if (!batch || batch.length === 0) break;
+      allEvents = allEvents.concat(batch);
+      if (batch.length < pageSize) break;
+      from += pageSize;
+    }
+    const events = allEvents;
 
-    if (evErr) return json({ error: evErr.message }, 500);
-    if (!events || events.length === 0) return json({ message: "All events already have locations", enriched: 0 });
+    if (events.length === 0) return json({ message: "All events already have locations", enriched: 0 });
 
     let totalEnriched = 0;
     const locationCache = new Map<string, string>(); // name -> id
