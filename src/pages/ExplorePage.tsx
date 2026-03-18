@@ -189,10 +189,12 @@ const ExplorePage = () => {
                   <Link
                     key={period.id}
                     to={`/era/${period.id}`}
-                    className="flex items-center justify-between bg-card border border-border rounded-lg px-5 py-4 hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                    className="card-premium flex items-center justify-between px-5 py-4 group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <Landmark className="h-4 w-4 text-primary shrink-0" />
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Landmark className="h-4 w-4 text-primary" />
+                      </div>
                       <div className="min-w-0">
                         <h3 className="font-medium text-foreground group-hover:text-primary transition-colors truncate">{period.name}</h3>
                         <p className="text-xs text-muted-foreground">
@@ -200,7 +202,7 @@ const ExplorePage = () => {
                         </p>
                       </div>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
                   </Link>
                 ))}
               </div>
