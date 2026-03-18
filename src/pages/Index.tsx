@@ -83,6 +83,9 @@ const Index = () => {
         </motion.div>
       </section>
 
+      {/* Featured Events from Database */}
+      <FeaturedEvents />
+
       {/* Featured Events Carousel */}
       <FeaturedEventsCarousel />
 
