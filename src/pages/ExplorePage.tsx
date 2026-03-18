@@ -247,8 +247,10 @@ const ExplorePage = () => {
                 { label: "Knowledge Graph", path: "/knowledge-graph", icon: <Globe className="h-5 w-5" /> },
                 { label: "British Royals", path: "/royals", icon: <Crown className="h-5 w-5" /> },
               ].map((link) => (
-                <Link key={link.path} to={link.path} className="flex flex-col items-center gap-2 bg-card border border-border rounded-xl p-6 hover:border-primary/40 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary">
-                  {link.icon}
+                <Link key={link.path} to={link.path} className="card-premium flex flex-col items-center gap-3 p-6 text-muted-foreground hover:text-primary group">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    {link.icon}
+                  </div>
                   <span className="text-sm font-medium">{link.label}</span>
                 </Link>
               ))}
