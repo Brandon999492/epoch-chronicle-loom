@@ -503,7 +503,7 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events, categories, featured-events", 404);
+    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events, categories, featured-events, random-event, recommendations", 404);
 
   } catch (e) {
     console.error("API error:", e);
