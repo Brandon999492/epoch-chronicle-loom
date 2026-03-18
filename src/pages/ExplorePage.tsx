@@ -217,15 +217,17 @@ const ExplorePage = () => {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {featured.slice(0, 9).map((event: any) => (
-                  <Link key={event.id} to={`/event/${event.id}`} className="group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 transition-all">
+                  <Link key={event.id} to={`/event/${event.id}`} className="card-premium overflow-hidden group block">
                     {event.image_url && (
-                      <img src={event.image_url} alt="" className="w-full h-36 object-cover" />
+                      <div className="overflow-hidden">
+                        <img src={event.image_url} alt="" className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-700" />
+                      </div>
                     )}
                     <div className="p-4">
                       <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">{event.title}</h3>
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {event.year_label && <span className="text-xs text-muted-foreground">{event.year_label}</span>}
-                        {event.category && <Badge variant="outline" className="text-xs capitalize">{event.category}</Badge>}
+                        {event.category && <span className={`text-[10px] font-semibold uppercase tracking-wider cat-${event.category}`}>{event.category}</span>}
                       </div>
                       {event.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{event.description}</p>}
                     </div>
