@@ -504,6 +504,7 @@ export type Database = {
           exact_date: string | null
           id: string
           image_url: string | null
+          is_featured: boolean | null
           location_id: string | null
           significance: number | null
           slug: string | null
@@ -525,6 +526,7 @@ export type Database = {
           exact_date?: string | null
           id?: string
           image_url?: string | null
+          is_featured?: boolean | null
           location_id?: string | null
           significance?: number | null
           slug?: string | null
@@ -546,6 +548,7 @@ export type Database = {
           exact_date?: string | null
           id?: string
           image_url?: string | null
+          is_featured?: boolean | null
           location_id?: string | null
           significance?: number | null
           slug?: string | null
