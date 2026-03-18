@@ -6,67 +6,89 @@
 
 @layer base {
   :root {
-    --background: 230 25% 10%;
-    --foreground: 40 20% 90%;
+    --background: 228 24% 8%;
+    --foreground: 42 18% 92%;
 
-    --card: 230 20% 14%;
-    --card-foreground: 40 20% 90%;
+    --card: 228 20% 12%;
+    --card-foreground: 42 18% 92%;
 
-    --popover: 230 20% 12%;
-    --popover-foreground: 40 20% 90%;
+    --popover: 228 20% 10%;
+    --popover-foreground: 42 18% 92%;
 
-    --primary: 32 50% 65%;
-    --primary-foreground: 230 25% 8%;
+    --primary: 34 52% 62%;
+    --primary-foreground: 228 24% 6%;
 
-    --secondary: 230 15% 20%;
-    --secondary-foreground: 40 15% 80%;
+    --secondary: 228 14% 18%;
+    --secondary-foreground: 42 14% 82%;
 
-    --muted: 230 15% 18%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 228 14% 16%;
+    --muted-foreground: 222 10% 52%;
 
-    --accent: 32 60% 55%;
-    --accent-foreground: 230 25% 8%;
+    --accent: 34 62% 52%;
+    --accent-foreground: 228 24% 6%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 230 15% 22%;
-    --input: 230 15% 20%;
-    --ring: 32 50% 65%;
+    --border: 228 14% 18%;
+    --input: 228 14% 18%;
+    --ring: 34 52% 62%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 230 20% 12%;
-    --sidebar-foreground: 40 15% 80%;
-    --sidebar-primary: 32 50% 65%;
-    --sidebar-primary-foreground: 230 25% 8%;
-    --sidebar-accent: 230 15% 18%;
-    --sidebar-accent-foreground: 40 15% 80%;
-    --sidebar-border: 230 15% 22%;
-    --sidebar-ring: 32 50% 65%;
+    --sidebar-background: 228 20% 10%;
+    --sidebar-foreground: 42 14% 82%;
+    --sidebar-primary: 34 52% 62%;
+    --sidebar-primary-foreground: 228 24% 6%;
+    --sidebar-accent: 228 14% 16%;
+    --sidebar-accent-foreground: 42 14% 82%;
+    --sidebar-border: 228 14% 18%;
+    --sidebar-ring: 34 52% 62%;
 
     /* Custom tokens */
-    --gold: 32 50% 65%;
-    --gold-light: 38 60% 75%;
-    --gold-dark: 28 45% 45%;
-    --navy: 230 25% 10%;
-    --navy-light: 230 20% 16%;
-    --navy-lighter: 230 15% 22%;
-    --parchment: 40 30% 92%;
-    --parchment-dark: 38 20% 80%;
-    --hero-gradient: linear-gradient(180deg, hsl(230 25% 6%) 0%, hsl(230 25% 12%) 50%, hsl(230 20% 16%) 100%);
-    --card-gradient: linear-gradient(135deg, hsl(230 20% 14%) 0%, hsl(230 20% 18%) 100%);
-    --gold-gradient: linear-gradient(135deg, hsl(32 50% 65%) 0%, hsl(38 60% 75%) 50%, hsl(28 45% 45%) 100%);
-    --timeline-glow: 0 0 20px hsl(32 50% 65% / 0.3);
-    --shadow-dramatic: 0 20px 60px -15px hsl(0 0% 0% / 0.5);
-    --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.4);
+    --gold: 34 52% 62%;
+    --gold-light: 40 60% 72%;
+    --gold-dark: 30 44% 42%;
+    --navy: 228 24% 8%;
+    --navy-light: 228 20% 14%;
+    --navy-lighter: 228 14% 20%;
+    --parchment: 42 28% 92%;
+    --parchment-dark: 40 18% 78%;
+
+    /* Category semantic colors */
+    --cat-war: 0 68% 58%;
+    --cat-science: 192 72% 52%;
+    --cat-monarchy: 38 80% 58%;
+    --cat-politics: 218 72% 58%;
+    --cat-culture: 270 60% 62%;
+    --cat-religion: 152 56% 48%;
+    --cat-exploration: 174 62% 48%;
+    --cat-technology: 238 62% 62%;
+    --cat-disaster: 24 82% 52%;
+    --cat-law: 210 14% 52%;
+    --cat-medicine: 340 62% 58%;
+    --cat-philosophy: 48 72% 52%;
+    --cat-arts: 280 52% 58%;
+    --cat-general: 222 10% 52%;
+
+    /* Premium effects */
+    --hero-gradient: linear-gradient(180deg, hsl(228 24% 4%) 0%, hsl(228 24% 10%) 50%, hsl(228 20% 14%) 100%);
+    --card-gradient: linear-gradient(145deg, hsl(228 20% 12%) 0%, hsl(228 20% 16%) 100%);
+    --gold-gradient: linear-gradient(135deg, hsl(34 52% 62%) 0%, hsl(40 60% 72%) 50%, hsl(30 44% 42%) 100%);
+    --glass-bg: hsl(228 20% 12% / 0.7);
+    --glass-border: hsl(228 14% 24% / 0.5);
+    --timeline-glow: 0 0 24px hsl(34 52% 62% / 0.25);
+    --shadow-dramatic: 0 24px 64px -16px hsl(0 0% 0% / 0.55);
+    --shadow-card: 0 4px 24px -4px hsl(0 0% 0% / 0.35);
+    --shadow-card-hover: 0 8px 32px -4px hsl(34 52% 62% / 0.15), 0 4px 16px -4px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 0 40px -8px hsl(34 52% 62% / 0.2);
   }
 
   .dark {
-    --background: 230 25% 6%;
-    --foreground: 40 20% 92%;
-    --card: 230 20% 10%;
-    --card-foreground: 40 20% 92%;
+    --background: 228 24% 5%;
+    --foreground: 42 18% 94%;
+    --card: 228 20% 8%;
+    --card-foreground: 42 18% 94%;
   }
 }
 
@@ -78,10 +100,23 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Playfair Display', serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Improved text rendering for long content */
+  p {
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
   }
 }
 
@@ -109,12 +144,27 @@
     background: var(--card-gradient);
   }
 
+  .bg-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-color: var(--glass-border);
+  }
+
   .shadow-dramatic {
     box-shadow: var(--shadow-dramatic);
   }
 
   .shadow-card {
     box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
   }
 
   .glow-gold {
@@ -125,6 +175,50 @@
     background: linear-gradient(180deg, transparent, hsl(var(--gold)), transparent);
   }
 
+  /* Premium card hover effect */
+  .card-premium {
+    @apply bg-card border border-border rounded-xl transition-all duration-300;
+  }
+  .card-premium:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: hsl(var(--primary) / 0.3);
+    transform: translateY(-2px);
+  }
+
+  /* Skeleton shimmer */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  /* Reading-optimized text */
+  .prose-history {
+    @apply text-muted-foreground leading-[1.8] tracking-wide;
+    font-size: 1.0625rem;
+    max-width: 68ch;
+  }
+
+  @media (min-width: 768px) {
+    .prose-history {
+      font-size: 1.125rem;
+      line-height: 1.85;
+    }
+  }
+
+  /* Sticky sidebar */
+  .sticky-sidebar {
+    position: sticky;
+    top: 5rem;
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -132,4 +226,81 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Thin custom scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+
+  /* Category color classes */
+  .cat-war { color: hsl(var(--cat-war)); }
+  .cat-science { color: hsl(var(--cat-science)); }
+  .cat-monarchy { color: hsl(var(--cat-monarchy)); }
+  .cat-politics { color: hsl(var(--cat-politics)); }
+  .cat-culture { color: hsl(var(--cat-culture)); }
+  .cat-religion { color: hsl(var(--cat-religion)); }
+  .cat-exploration { color: hsl(var(--cat-exploration)); }
+  .cat-technology { color: hsl(var(--cat-technology)); }
+  .cat-disaster { color: hsl(var(--cat-disaster)); }
+  .cat-law { color: hsl(var(--cat-law)); }
+  .cat-medicine { color: hsl(var(--cat-medicine)); }
+  .cat-philosophy { color: hsl(var(--cat-philosophy)); }
+  .cat-arts { color: hsl(var(--cat-arts)); }
+  .cat-general { color: hsl(var(--cat-general)); }
+
+  .bg-cat-war { background-color: hsl(var(--cat-war)); }
+  .bg-cat-science { background-color: hsl(var(--cat-science)); }
+  .bg-cat-monarchy { background-color: hsl(var(--cat-monarchy)); }
+  .bg-cat-politics { background-color: hsl(var(--cat-politics)); }
+  .bg-cat-culture { background-color: hsl(var(--cat-culture)); }
+  .bg-cat-religion { background-color: hsl(var(--cat-religion)); }
+  .bg-cat-exploration { background-color: hsl(var(--cat-exploration)); }
+  .bg-cat-technology { background-color: hsl(var(--cat-technology)); }
+  .bg-cat-disaster { background-color: hsl(var(--cat-disaster)); }
+  .bg-cat-law { background-color: hsl(var(--cat-law)); }
+  .bg-cat-medicine { background-color: hsl(var(--cat-medicine)); }
+  .bg-cat-philosophy { background-color: hsl(var(--cat-philosophy)); }
+  .bg-cat-arts { background-color: hsl(var(--cat-arts)); }
+  .bg-cat-general { background-color: hsl(var(--cat-general)); }
+
+  .border-cat-war { border-color: hsl(var(--cat-war) / 0.3); }
+  .border-cat-science { border-color: hsl(var(--cat-science) / 0.3); }
+  .border-cat-monarchy { border-color: hsl(var(--cat-monarchy) / 0.3); }
+  .border-cat-politics { border-color: hsl(var(--cat-politics) / 0.3); }
+  .border-cat-culture { border-color: hsl(var(--cat-culture) / 0.3); }
+  .border-cat-religion { border-color: hsl(var(--cat-religion) / 0.3); }
+  .border-cat-exploration { border-color: hsl(var(--cat-exploration) / 0.3); }
+  .border-cat-technology { border-color: hsl(var(--cat-technology) / 0.3); }
+  .border-cat-disaster { border-color: hsl(var(--cat-disaster) / 0.3); }
+  .border-cat-law { border-color: hsl(var(--cat-law) / 0.3); }
+  .border-cat-medicine { border-color: hsl(var(--cat-medicine) / 0.3); }
+  .border-cat-philosophy { border-color: hsl(var(--cat-philosophy) / 0.3); }
+  .border-cat-arts { border-color: hsl(var(--cat-arts) / 0.3); }
+  .border-cat-general { border-color: hsl(var(--cat-general) / 0.3); }
+
+  .bg-cat-war\/10 { background-color: hsl(var(--cat-war) / 0.1); }
+  .bg-cat-science\/10 { background-color: hsl(var(--cat-science) / 0.1); }
+  .bg-cat-monarchy\/10 { background-color: hsl(var(--cat-monarchy) / 0.1); }
+  .bg-cat-politics\/10 { background-color: hsl(var(--cat-politics) / 0.1); }
+  .bg-cat-culture\/10 { background-color: hsl(var(--cat-culture) / 0.1); }
+  .bg-cat-religion\/10 { background-color: hsl(var(--cat-religion) / 0.1); }
+  .bg-cat-exploration\/10 { background-color: hsl(var(--cat-exploration) / 0.1); }
+  .bg-cat-technology\/10 { background-color: hsl(var(--cat-technology) / 0.1); }
+  .bg-cat-disaster\/10 { background-color: hsl(var(--cat-disaster) / 0.1); }
+  .bg-cat-law\/10 { background-color: hsl(var(--cat-law) / 0.1); }
+  .bg-cat-medicine\/10 { background-color: hsl(var(--cat-medicine) / 0.1); }
+  .bg-cat-philosophy\/10 { background-color: hsl(var(--cat-philosophy) / 0.1); }
+  .bg-cat-arts\/10 { background-color: hsl(var(--cat-arts) / 0.1); }
+  .bg-cat-general\/10 { background-color: hsl(var(--cat-general) / 0.1); }
 }
