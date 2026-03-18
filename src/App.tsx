@@ -31,6 +31,8 @@ import MediaLibraryPage from "./pages/MediaLibraryPage";
 import SeedDataPage from "./pages/SeedDataPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 const HistoryMapPage = React.lazy(() => import("./pages/HistoryMapPage"));
+import ExplorePage from "./pages/ExplorePage";
+import CategoryPage from "./pages/CategoryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +71,8 @@ const App = () => (
             <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="/admin/seed-data" element={<SeedDataPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/category/:categoryId" element={<CategoryPage />} />
             <Route path="/map" element={<Suspense fallback={<div className="min-h-screen bg-background" />}><HistoryMapPage /></Suspense>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

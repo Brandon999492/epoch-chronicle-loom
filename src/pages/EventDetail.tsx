@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { allEvents, categoryLabels, eras } from "@/data/historicalData";
 import { categoryColors } from "@/data/types";
 import ImageSlideshow from "@/components/ImageSlideshow";
+import { EventRecommendations } from "@/components/EventRecommendations";
 
 const isLegacyStaticId = (s: string) => /^[a-z]{1,6}\d{1,3}$/i.test(s);
 
@@ -270,6 +271,14 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
             </div>
           </motion.div>
         )}
+
+        {/* Recommendations */}
+        <EventRecommendations
+          eventId={eventId}
+          tags={event.tags}
+          category={event.category}
+          timePeriodId={event.time_period?.id}
+        />
 
         {/* Navigation */}
         <div className="mt-12 pt-8 border-t border-border flex items-center justify-between">
