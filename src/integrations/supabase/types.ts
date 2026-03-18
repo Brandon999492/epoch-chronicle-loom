@@ -85,11 +85,33 @@ export type Database = {
           },
         ]
       }
+      bookmark_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bookmarks: {
         Row: {
           created_at: string
           era_id: string
           event_id: string
+          folder_id: string | null
           id: string
           note: string | null
           user_id: string
@@ -98,6 +120,7 @@ export type Database = {
           created_at?: string
           era_id: string
           event_id: string
+          folder_id?: string | null
           id?: string
           note?: string | null
           user_id: string
@@ -106,11 +129,20 @@ export type Database = {
           created_at?: string
           era_id?: string
           event_id?: string
+          folder_id?: string | null
           id?: string
           note?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bookmarks_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "bookmark_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       civilizations: {
         Row: {
@@ -386,6 +418,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      event_notes: {
+        Row: {
+          content: string
+          created_at: string
+          event_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          event_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       figure_media: {
         Row: {
@@ -713,6 +772,33 @@ export type Database = {
         }
         Relationships: []
       }
+      learned_events: {
+        Row: {
+          category: string | null
+          event_id: string
+          event_title: string | null
+          id: string
+          learned_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          event_id: string
+          event_title?: string | null
+          id?: string
+          learned_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          event_id?: string
+          event_title?: string | null
+          id?: string
+          learned_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           alternate_names: string[] | null
@@ -848,6 +934,33 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      recently_viewed: {
+        Row: {
+          category: string | null
+          event_id: string
+          event_title: string | null
+          id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          category?: string | null
+          event_id: string
+          event_title?: string | null
+          id?: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          category?: string | null
+          event_id?: string
+          event_title?: string | null
+          id?: string
+          user_id?: string
+          viewed_at?: string
         }
         Relationships: []
       }

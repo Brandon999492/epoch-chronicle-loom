@@ -10,6 +10,7 @@ import { allEvents, categoryLabels, eras } from "@/data/historicalData";
 import { categoryColors } from "@/data/types";
 import ImageSlideshow from "@/components/ImageSlideshow";
 import { EventRecommendations } from "@/components/EventRecommendations";
+import { EventActions } from "@/components/EventActions";
 
 const isLegacyStaticId = (s: string) => /^[a-z]{1,6}\d{1,3}$/i.test(s);
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
@@ -421,6 +422,14 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
                 </div>
               </motion.div>
             )}
+
+            {/* User Actions: Bookmark, Learn, Notes */}
+            <EventActions
+              eventId={eventId}
+              eventTitle={event.title}
+              category={event.category}
+              eraId={event.time_period?.id}
+            />
 
             {/* Recommendations */}
             <EventRecommendations

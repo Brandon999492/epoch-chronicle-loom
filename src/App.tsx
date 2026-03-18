@@ -20,6 +20,7 @@ import GoalsPage from "./pages/GoalsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AddHistoryPage from "./pages/AddHistoryPage";
 import BookmarksPage from "./pages/BookmarksPage";
+import DashboardPage from "./pages/DashboardPage";
 import RoyalArchive from "./pages/RoyalArchive";
 import RoyalHouseDetail from "./pages/RoyalHouseDetail";
 import RoyalProfilePage from "./pages/RoyalProfilePage";
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/add-history" element={<AddHistoryPage />} />
             <Route path="/bookmarks" element={<BookmarksPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/history-ai" element={<HistoryAiPage />} />
             <Route path="/video-studio" element={<HistoryVideoStudioPage />} />
             <Route path="/royals" element={<RoyalArchive />} />
