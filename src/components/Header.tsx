@@ -6,16 +6,15 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "Home", path: "/" },
+  { label: "Explore", path: "/explore" },
   { label: "Timeline", path: "/timeline" },
   { label: "Archive", path: "/archive" },
+  { label: "Map", path: "/map" },
   { label: "Search", path: "/search" },
-  { label: "History Map", path: "/map" },
   { label: "Knowledge Graph", path: "/knowledge-graph" },
-  { label: "Media", path: "/media-library" },
-  { label: "British Royals", path: "/royals" },
+  { label: "Royals", path: "/royals" },
   { label: "History AI", path: "/history-ai" },
   { label: "Video Studio", path: "/video-studio" },
-  { label: "Journal", path: "/journal" },
 ];
 
 export function Header() {

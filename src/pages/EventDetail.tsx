@@ -272,6 +272,14 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
           </motion.div>
         )}
 
+        {/* Recommendations */}
+        <EventRecommendations
+          eventId={eventId}
+          tags={event.tags}
+          category={event.category}
+          timePeriodId={event.time_period?.id}
+        />
+
         {/* Navigation */}
         <div className="mt-12 pt-8 border-t border-border flex items-center justify-between">
           <Link to="/archive" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
