@@ -161,11 +161,12 @@ const ExplorePage = () => {
                     <Link
                       key={cat.name}
                       to={`/category/${cat.name}`}
-                      className="group bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                      className={`group card-premium p-5 bg-cat-${cat.name}/10 border-cat-${cat.name}`}
                     >
-                      <div className={`mb-3 ${meta.color}`}>{meta.icon}</div>
+                      <div className={`mb-3 ${meta.cssClass}`}>{meta.icon}</div>
                       <h3 className="font-medium text-foreground capitalize group-hover:text-primary transition-colors">{cat.name}</h3>
                       <p className="text-xs text-muted-foreground mt-1">{cat.count} events</p>
+                      <p className="text-[10px] text-muted-foreground mt-1.5 hidden sm:block">{meta.description}</p>
                     </Link>
                   );
                 })}
