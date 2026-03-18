@@ -425,6 +425,68 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
+    // ===== RANDOM EVENT =====
+    if (resource === "random-event") {
+      // Get total count, pick random offset
+      const { count } = await supabase.from("historical_events").select("id", { count: "exact", head: true });
+      const total = count || 1;
+      const randomOffset = Math.floor(Math.random() * total);
+      const { data, error: e } = await supabase
+        .from("historical_events")
+        .select("id, title, slug, year_label, category, significance, image_url, description, location:locations(name)")
+        .range(randomOffset, randomOffset)
+        .limit(1)
+        .maybeSingle();
+      if (e || !data) return err("Could not find random event", 500);
+      return json(data);
+    }
+
+    // ===== RECOMMENDATIONS =====
+    if (resource === "recommendations") {
+      const eventId = url.searchParams.get("event_id");
+      if (!eventId) return err("event_id required");
+      
+      // Fetch the source event
+      const { data: src } = await supabase
+        .from("historical_events")
+        .select("id, category, tags, time_period_id, civilization_id, location_id, year")
+        .eq("id", eventId)
+        .maybeSingle();
+      if (!src) return json([]);
+
+      // Find events sharing tags, category, time period, or nearby year
+      let q = supabase
+        .from("historical_events")
+        .select("id, title, slug, year_label, category, image_url, description")
+        .neq("id", eventId)
+        .limit(12);
+
+      // Build OR conditions for similarity
+      const orClauses: string[] = [];
+      if (src.category) orClauses.push(`category.eq.${src.category}`);
+      if (src.time_period_id) orClauses.push(`time_period_id.eq.${src.time_period_id}`);
+      if (src.civilization_id) orClauses.push(`civilization_id.eq.${src.civilization_id}`);
+      
+      if (orClauses.length > 0) {
+        q = q.or(orClauses.join(","));
+      }
+
+      const { data: recs } = await q.order("significance", { ascending: false, nullsFirst: false });
+      
+      // If we have tags, boost events with shared tags to the top
+      let results = recs || [];
+      if (src.tags && src.tags.length > 0) {
+        const srcTags = new Set(src.tags.map((t: string) => t.toLowerCase()));
+        results.sort((a: any, b: any) => {
+          const aShared = (a.tags || []).filter((t: string) => srcTags.has(t.toLowerCase())).length;
+          const bShared = (b.tags || []).filter((t: string) => srcTags.has(t.toLowerCase())).length;
+          return bShared - aShared;
+        });
+      }
+
+      return json(results.slice(0, 6));
+    }
+
     // ===== COUNTRY EVENTS (events for a specific country) =====
     if (resource === "country-events") {
       const country = url.searchParams.get("country") || "";
