@@ -31,6 +31,8 @@ import MediaLibraryPage from "./pages/MediaLibraryPage";
 import SeedDataPage from "./pages/SeedDataPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 const HistoryMapPage = React.lazy(() => import("./pages/HistoryMapPage"));
+import ExplorePage from "./pages/ExplorePage";
+import CategoryPage from "./pages/CategoryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
