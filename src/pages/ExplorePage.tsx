@@ -16,21 +16,21 @@ import { useState } from "react";
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
 const headers = { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" };
 
-const categoryMeta: Record<string, { icon: React.ReactNode; color: string; description: string }> = {
-  war: { icon: <Swords className="h-5 w-5" />, color: "text-red-400", description: "Battles, conflicts, and military campaigns" },
-  science: { icon: <FlaskConical className="h-5 w-5" />, color: "text-cyan-400", description: "Discoveries, inventions, and breakthroughs" },
-  monarchy: { icon: <Crown className="h-5 w-5" />, color: "text-amber-400", description: "Kings, queens, and royal dynasties" },
-  politics: { icon: <Landmark className="h-5 w-5" />, color: "text-blue-400", description: "Governance, treaties, and revolutions" },
-  culture: { icon: <Palette className="h-5 w-5" />, color: "text-purple-400", description: "Art, literature, and cultural movements" },
-  religion: { icon: <BookOpen className="h-5 w-5" />, color: "text-emerald-400", description: "Faith, philosophy, and spiritual movements" },
-  exploration: { icon: <Ship className="h-5 w-5" />, color: "text-teal-400", description: "Voyages, expeditions, and discoveries" },
-  technology: { icon: <Atom className="h-5 w-5" />, color: "text-indigo-400", description: "Engineering, computing, and innovation" },
-  general: { icon: <Globe className="h-5 w-5" />, color: "text-muted-foreground", description: "General historical events" },
-  disaster: { icon: <Flame className="h-5 w-5" />, color: "text-orange-400", description: "Natural disasters and catastrophes" },
-  law: { icon: <Scale className="h-5 w-5" />, color: "text-slate-400", description: "Legal milestones and justice" },
-  medicine: { icon: <Heart className="h-5 w-5" />, color: "text-pink-400", description: "Medical advances and health" },
-  philosophy: { icon: <Lightbulb className="h-5 w-5" />, color: "text-yellow-400", description: "Ideas that changed the world" },
-  arts: { icon: <Music className="h-5 w-5" />, color: "text-violet-400", description: "Music, performance, and visual arts" },
+const categoryMeta: Record<string, { icon: React.ReactNode; cssClass: string; description: string }> = {
+  war: { icon: <Swords className="h-5 w-5" />, cssClass: "cat-war", description: "Battles, conflicts, and military campaigns" },
+  science: { icon: <FlaskConical className="h-5 w-5" />, cssClass: "cat-science", description: "Discoveries, inventions, and breakthroughs" },
+  monarchy: { icon: <Crown className="h-5 w-5" />, cssClass: "cat-monarchy", description: "Kings, queens, and royal dynasties" },
+  politics: { icon: <Landmark className="h-5 w-5" />, cssClass: "cat-politics", description: "Governance, treaties, and revolutions" },
+  culture: { icon: <Palette className="h-5 w-5" />, cssClass: "cat-culture", description: "Art, literature, and cultural movements" },
+  religion: { icon: <BookOpen className="h-5 w-5" />, cssClass: "cat-religion", description: "Faith, philosophy, and spiritual movements" },
+  exploration: { icon: <Ship className="h-5 w-5" />, cssClass: "cat-exploration", description: "Voyages, expeditions, and discoveries" },
+  technology: { icon: <Atom className="h-5 w-5" />, cssClass: "cat-technology", description: "Engineering, computing, and innovation" },
+  general: { icon: <Globe className="h-5 w-5" />, cssClass: "cat-general", description: "General historical events" },
+  disaster: { icon: <Flame className="h-5 w-5" />, cssClass: "cat-disaster", description: "Natural disasters and catastrophes" },
+  law: { icon: <Scale className="h-5 w-5" />, cssClass: "cat-law", description: "Legal milestones and justice" },
+  medicine: { icon: <Heart className="h-5 w-5" />, cssClass: "cat-medicine", description: "Medical advances and health" },
+  philosophy: { icon: <Lightbulb className="h-5 w-5" />, cssClass: "cat-philosophy", description: "Ideas that changed the world" },
+  arts: { icon: <Music className="h-5 w-5" />, cssClass: "cat-arts", description: "Music, performance, and visual arts" },
 };
 
 function useCategories() {
