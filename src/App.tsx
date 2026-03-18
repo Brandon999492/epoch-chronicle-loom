@@ -20,6 +20,7 @@ import GoalsPage from "./pages/GoalsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AddHistoryPage from "./pages/AddHistoryPage";
 import BookmarksPage from "./pages/BookmarksPage";
+import DashboardPage from "./pages/DashboardPage";
 import RoyalArchive from "./pages/RoyalArchive";
 import RoyalHouseDetail from "./pages/RoyalHouseDetail";
 import RoyalProfilePage from "./pages/RoyalProfilePage";
