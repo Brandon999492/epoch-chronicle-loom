@@ -1,0 +1,1 @@
+ALTER TABLE public.historical_events ADD COLUMN IF NOT EXISTS is_featured boolean DEFAULT false;
