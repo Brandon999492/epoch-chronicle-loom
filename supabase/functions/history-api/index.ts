@@ -412,6 +412,19 @@ Deno.serve(async (req) => {
       return json(allData);
     }
 
+    // ===== FEATURED EVENTS =====
+    if (resource === "featured-events") {
+      const { data, error: e } = await supabase
+        .from("historical_events")
+        .select("id, title, slug, year_label, category, significance, image_url, description, location:locations(name), time_period:time_periods(name)")
+        .eq("is_featured", true)
+        .order("significance", { ascending: false, nullsFirst: false })
+        .order("year", { ascending: true, nullsFirst: false })
+        .limit(30);
+      if (e) { console.error("DB error:", e.message); return err("An error occurred processing your request.", 500); }
+      return json(data);
+    }
+
     // ===== COUNTRY EVENTS (events for a specific country) =====
     if (resource === "country-events") {
       const country = url.searchParams.get("country") || "";
@@ -428,7 +441,7 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events, categories", 404);
+    return err("Unknown resource. Available: events, figures, dynasties, timeline, civilizations, locations, media, search, graph, map-events, country-events, categories, featured-events", 404);
 
   } catch (e) {
     console.error("API error:", e);

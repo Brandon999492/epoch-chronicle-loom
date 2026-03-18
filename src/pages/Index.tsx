@@ -2,6 +2,7 @@ import { Header } from "@/components/Header";
 import { TimelineSection } from "@/components/TimelineSection";
 import { OnThisDay } from "@/components/OnThisDay";
 import { FeaturedFigures } from "@/components/FeaturedFigures";
+import { FeaturedEvents } from "@/components/FeaturedEvents";
 import { ExternalResources } from "@/components/ExternalResources";
 import { TrendingTopics, FeaturedEventsCarousel } from "@/components/TrendingAndCarousel";
 import { SearchBar } from "@/components/SearchBar";
@@ -81,6 +82,9 @@ const Index = () => {
           <ArrowDown className="h-5 w-5 text-muted-foreground animate-bounce" />
         </motion.div>
       </section>
+
+      {/* Featured Events from Database */}
+      <FeaturedEvents />
 
       {/* Featured Events Carousel */}
       <FeaturedEventsCarousel />
