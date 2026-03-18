@@ -98,6 +98,7 @@ export function Header() {
               <div className="border-t border-border/30 my-2" />
               {user ? (
                 <>
+                  <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/40">Dashboard</Link>
                   <Link to="/profile" onClick={() => setMobileOpen(false)} className="px-4 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/40">Profile</Link>
                   <Link to="/settings" onClick={() => setMobileOpen(false)} className="px-4 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/40">Settings</Link>
                   <button onClick={() => { signOut(); setMobileOpen(false); }} className="px-4 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/40 text-left">Sign Out</button>

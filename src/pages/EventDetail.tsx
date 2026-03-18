@@ -423,6 +423,14 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
               </motion.div>
             )}
 
+            {/* User Actions: Bookmark, Learn, Notes */}
+            <EventActions
+              eventId={eventId}
+              eventTitle={event.title}
+              category={event.category}
+              eraId={event.time_period?.id}
+            />
+
             {/* Recommendations */}
             <EventRecommendations
               eventId={eventId}

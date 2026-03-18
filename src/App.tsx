@@ -61,6 +61,7 @@ const App = () => (
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/add-history" element={<AddHistoryPage />} />
             <Route path="/bookmarks" element={<BookmarksPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/history-ai" element={<HistoryAiPage />} />
             <Route path="/video-studio" element={<HistoryVideoStudioPage />} />
             <Route path="/royals" element={<RoyalArchive />} />
