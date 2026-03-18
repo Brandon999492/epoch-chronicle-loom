@@ -16,21 +16,21 @@ import { useState } from "react";
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
 const headers = { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" };
 
-const categoryMeta: Record<string, { icon: React.ReactNode; color: string; description: string }> = {
-  war: { icon: <Swords className="h-5 w-5" />, color: "text-red-400", description: "Battles, conflicts, and military campaigns" },
-  science: { icon: <FlaskConical className="h-5 w-5" />, color: "text-cyan-400", description: "Discoveries, inventions, and breakthroughs" },
-  monarchy: { icon: <Crown className="h-5 w-5" />, color: "text-amber-400", description: "Kings, queens, and royal dynasties" },
-  politics: { icon: <Landmark className="h-5 w-5" />, color: "text-blue-400", description: "Governance, treaties, and revolutions" },
-  culture: { icon: <Palette className="h-5 w-5" />, color: "text-purple-400", description: "Art, literature, and cultural movements" },
-  religion: { icon: <BookOpen className="h-5 w-5" />, color: "text-emerald-400", description: "Faith, philosophy, and spiritual movements" },
-  exploration: { icon: <Ship className="h-5 w-5" />, color: "text-teal-400", description: "Voyages, expeditions, and discoveries" },
-  technology: { icon: <Atom className="h-5 w-5" />, color: "text-indigo-400", description: "Engineering, computing, and innovation" },
-  general: { icon: <Globe className="h-5 w-5" />, color: "text-muted-foreground", description: "General historical events" },
-  disaster: { icon: <Flame className="h-5 w-5" />, color: "text-orange-400", description: "Natural disasters and catastrophes" },
-  law: { icon: <Scale className="h-5 w-5" />, color: "text-slate-400", description: "Legal milestones and justice" },
-  medicine: { icon: <Heart className="h-5 w-5" />, color: "text-pink-400", description: "Medical advances and health" },
-  philosophy: { icon: <Lightbulb className="h-5 w-5" />, color: "text-yellow-400", description: "Ideas that changed the world" },
-  arts: { icon: <Music className="h-5 w-5" />, color: "text-violet-400", description: "Music, performance, and visual arts" },
+const categoryMeta: Record<string, { icon: React.ReactNode; cssClass: string; description: string }> = {
+  war: { icon: <Swords className="h-5 w-5" />, cssClass: "cat-war", description: "Battles, conflicts, and military campaigns" },
+  science: { icon: <FlaskConical className="h-5 w-5" />, cssClass: "cat-science", description: "Discoveries, inventions, and breakthroughs" },
+  monarchy: { icon: <Crown className="h-5 w-5" />, cssClass: "cat-monarchy", description: "Kings, queens, and royal dynasties" },
+  politics: { icon: <Landmark className="h-5 w-5" />, cssClass: "cat-politics", description: "Governance, treaties, and revolutions" },
+  culture: { icon: <Palette className="h-5 w-5" />, cssClass: "cat-culture", description: "Art, literature, and cultural movements" },
+  religion: { icon: <BookOpen className="h-5 w-5" />, cssClass: "cat-religion", description: "Faith, philosophy, and spiritual movements" },
+  exploration: { icon: <Ship className="h-5 w-5" />, cssClass: "cat-exploration", description: "Voyages, expeditions, and discoveries" },
+  technology: { icon: <Atom className="h-5 w-5" />, cssClass: "cat-technology", description: "Engineering, computing, and innovation" },
+  general: { icon: <Globe className="h-5 w-5" />, cssClass: "cat-general", description: "General historical events" },
+  disaster: { icon: <Flame className="h-5 w-5" />, cssClass: "cat-disaster", description: "Natural disasters and catastrophes" },
+  law: { icon: <Scale className="h-5 w-5" />, cssClass: "cat-law", description: "Legal milestones and justice" },
+  medicine: { icon: <Heart className="h-5 w-5" />, cssClass: "cat-medicine", description: "Medical advances and health" },
+  philosophy: { icon: <Lightbulb className="h-5 w-5" />, cssClass: "cat-philosophy", description: "Ideas that changed the world" },
+  arts: { icon: <Music className="h-5 w-5" />, cssClass: "cat-arts", description: "Music, performance, and visual arts" },
 };
 
 function useCategories() {
@@ -161,11 +161,12 @@ const ExplorePage = () => {
                     <Link
                       key={cat.name}
                       to={`/category/${cat.name}`}
-                      className="group bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                      className={`group card-premium p-5 bg-cat-${cat.name}/10 border-cat-${cat.name}`}
                     >
-                      <div className={`mb-3 ${meta.color}`}>{meta.icon}</div>
+                      <div className={`mb-3 ${meta.cssClass}`}>{meta.icon}</div>
                       <h3 className="font-medium text-foreground capitalize group-hover:text-primary transition-colors">{cat.name}</h3>
                       <p className="text-xs text-muted-foreground mt-1">{cat.count} events</p>
+                      <p className="text-[10px] text-muted-foreground mt-1.5 hidden sm:block">{meta.description}</p>
                     </Link>
                   );
                 })}
@@ -188,10 +189,12 @@ const ExplorePage = () => {
                   <Link
                     key={period.id}
                     to={`/era/${period.id}`}
-                    className="flex items-center justify-between bg-card border border-border rounded-lg px-5 py-4 hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                    className="card-premium flex items-center justify-between px-5 py-4 group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <Landmark className="h-4 w-4 text-primary shrink-0" />
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Landmark className="h-4 w-4 text-primary" />
+                      </div>
                       <div className="min-w-0">
                         <h3 className="font-medium text-foreground group-hover:text-primary transition-colors truncate">{period.name}</h3>
                         <p className="text-xs text-muted-foreground">
@@ -199,7 +202,7 @@ const ExplorePage = () => {
                         </p>
                       </div>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
                   </Link>
                 ))}
               </div>
@@ -214,15 +217,17 @@ const ExplorePage = () => {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {featured.slice(0, 9).map((event: any) => (
-                  <Link key={event.id} to={`/event/${event.id}`} className="group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 transition-all">
+                  <Link key={event.id} to={`/event/${event.id}`} className="card-premium overflow-hidden group block">
                     {event.image_url && (
-                      <img src={event.image_url} alt="" className="w-full h-36 object-cover" />
+                      <div className="overflow-hidden">
+                        <img src={event.image_url} alt="" className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-700" />
+                      </div>
                     )}
                     <div className="p-4">
                       <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">{event.title}</h3>
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {event.year_label && <span className="text-xs text-muted-foreground">{event.year_label}</span>}
-                        {event.category && <Badge variant="outline" className="text-xs capitalize">{event.category}</Badge>}
+                        {event.category && <span className={`text-[10px] font-semibold uppercase tracking-wider cat-${event.category}`}>{event.category}</span>}
                       </div>
                       {event.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{event.description}</p>}
                     </div>
@@ -242,8 +247,10 @@ const ExplorePage = () => {
                 { label: "Knowledge Graph", path: "/knowledge-graph", icon: <Globe className="h-5 w-5" /> },
                 { label: "British Royals", path: "/royals", icon: <Crown className="h-5 w-5" /> },
               ].map((link) => (
-                <Link key={link.path} to={link.path} className="flex flex-col items-center gap-2 bg-card border border-border rounded-xl p-6 hover:border-primary/40 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary">
-                  {link.icon}
+                <Link key={link.path} to={link.path} className="card-premium flex flex-col items-center gap-3 p-6 text-muted-foreground hover:text-primary group">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    {link.icon}
+                  </div>
                   <span className="text-sm font-medium">{link.label}</span>
                 </Link>
               ))}
