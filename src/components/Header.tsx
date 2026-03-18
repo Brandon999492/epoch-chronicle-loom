@@ -57,6 +57,9 @@ export function Header() {
         <div className="hidden lg:flex items-center gap-1">
           {user ? (
             <>
+              <Link to="/dashboard" className="px-2.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all">
+                Dashboard
+              </Link>
               <Link to="/profile" className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all" title="Profile">
                 <User className="h-4 w-4" />
               </Link>
