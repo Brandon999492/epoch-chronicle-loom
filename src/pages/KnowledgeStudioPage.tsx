@@ -6,13 +6,40 @@ import { NoteCard } from "@/components/studio/NoteCard";
 import { SmartEditor } from "@/components/studio/SmartEditor";
 import { QuickCapture } from "@/components/studio/QuickCapture";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Pin, Heart, Trash2, Filter, BookOpen, ArrowLeft, Loader2 } from "lucide-react";
+import { Plus, Search, Pin, Heart, Trash2, Filter, BookOpen, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+const CATEGORIES = [
+  "Ice Age", "Space", "Serial Killers", "Ancient Egypt", "Ancient Greece",
+  "Royal Family", "Dinosaurs", "Earth History", "Extinction Events", "American History",
+];
+
+const STRUCTURED_TEMPLATE_HTML = `
+<h1>Untitled Note</h1>
+<p><strong>Write a one-line headline…</strong></p>
+<hr/>
+<div class="section-label">Summary</div>
+<p style="color:hsl(var(--muted-foreground))">Write what you learned…</p>
+<hr/>
+<div style="display:flex;gap:24px;flex-wrap:wrap;margin:16px 0">
+  <div><span class="section-label">Year</span><p>—</p></div>
+  <div><span class="section-label">Timeline Period</span><p>—</p></div>
+  <div><span class="section-label">Category</span><p>—</p></div>
+</div>
+<hr/>
+<div class="section-label">Key Points</div>
+<ul><li>Point 1</li><li>Point 2</li><li>Point 3</li></ul>
+<hr/>
+<div class="section-label">Detailed Notes</div>
+<p style="color:hsl(var(--muted-foreground))">Write detailed notes here…</p>
+<hr/>
+<div class="section-label">My Thoughts</div>
+<p style="color:hsl(var(--muted-foreground));font-style:italic">Add your thoughts…</p>
+`.trim();
+
 const colorThemes = ["default", "red", "blue", "green", "purple", "amber", "rose"];
 const themeDot: Record<string, string> = { default: "bg-muted-foreground", red: "bg-red-400", blue: "bg-blue-400", green: "bg-green-400", purple: "bg-purple-400", amber: "bg-amber-400", rose: "bg-rose-400" };
-const defaultCategories = ["general", "research", "notes", "essay", "review", "timeline"];
 
 type KNote = {
   id: string; user_id: string; title: string; content: string | null; html_content: string | null;
@@ -39,6 +66,7 @@ const KnowledgeStudioPage = () => {
   const [filterCat, setFilterCat] = useState<string>("all");
   const [saving, setSaving] = useState(false);
   const [showMeta, setShowMeta] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [user, authLoading, navigate]);
 
@@ -55,25 +83,30 @@ const KnowledgeStudioPage = () => {
 
   useEffect(() => { fetchNotes(); }, [fetchNotes]);
 
-  const createNote = async (quickTitle?: string, quickContent?: string, quickHtml?: string) => {
+  const createNote = async (quickTitle?: string, quickContent?: string, quickHtml?: string, structured?: any) => {
     if (!user) return;
+    const noteTitle = quickTitle || "Untitled Note";
+    const noteHtml = quickHtml || STRUCTURED_TEMPLATE_HTML;
+    const noteContent = quickContent || "";
+    const noteCategory = structured?.category || "general";
+    const noteYear = structured?.year ? parseInt(structured.year) || null : null;
+
     const { data, error } = await supabase
       .from("knowledge_notes")
       .insert({
         user_id: user.id,
-        title: quickTitle || "Untitled Note",
-        content: quickContent || "",
-        html_content: quickHtml || quickContent ? `<p>${quickContent}</p>` : "",
+        title: noteTitle,
+        content: noteContent,
+        html_content: noteHtml,
+        category: noteCategory,
+        linked_year: noteYear,
       })
       .select()
       .single();
     if (data) {
       setNotes((prev) => [data as KNote, ...prev]);
-      if (!quickTitle) selectNote(data as KNote);
-      else {
-        selectNote(data as KNote);
-        toast.success("Note created!");
-      }
+      selectNote(data as KNote);
+      if (quickTitle) toast.success("Note created!");
     }
     if (error) toast.error("Failed to create note");
   };
@@ -88,6 +121,44 @@ const KnowledgeStudioPage = () => {
     setLinkedYear(n.linked_year?.toString() || "");
     setTagsInput((n.tags || []).join(", "));
     setShowMeta(false);
+  };
+
+  // Generate note with AI for current note
+  const generateForCurrent = async () => {
+    if (!selected) return;
+    const topic = title.trim() || plainContent.trim().slice(0, 200);
+    if (!topic || topic === "Untitled Note") {
+      toast.error("Enter a title or some text first");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const isYt = topic.match(/(?:youtu\.be\/|v=)([^&?]+)/);
+      const action = isYt ? "youtube_structured" : "generate_structured_note";
+      const body = isYt ? { action, url: topic } : { action, text: topic };
+      const { data, error } = await supabase.functions.invoke("knowledge-ai", { body });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      const s = data.structured;
+      if (!s) { toast.error("AI did not return data"); return; }
+
+      const videoEmbed = data.videoId
+        ? `<div style="position:relative;padding-bottom:56.25%;height:0;margin-top:32px;border-radius:12px;overflow:hidden"><iframe src="https://www.youtube.com/embed/${data.videoId}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allowfullscreen></iframe></div>`
+        : "";
+      const html = buildStructuredHtml(s, videoEmbed);
+      const plain = buildStructuredPlain(s);
+
+      setTitle(s.title || title);
+      setHtmlContent(html);
+      setPlainContent(plain);
+      if (s.category) setCategory(s.category);
+      if (s.year) setLinkedYear(s.year);
+      toast.success("Note generated with AI!");
+    } catch (e: any) {
+      toast.error(e.message || "AI generation failed");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   // Autosave
@@ -124,7 +195,7 @@ const KnowledgeStudioPage = () => {
     return true;
   });
 
-  const allCategories = ["all", ...new Set([...defaultCategories, ...notes.map(n => n.category || "general")])];
+  const allCategories = ["all", ...new Set([...CATEGORIES, ...notes.map(n => n.category || "general").filter(c => c !== "general")])];
   const wordCount = plainContent.trim().split(/\s+/).filter(Boolean).length;
 
   if (authLoading) return null;
@@ -134,69 +205,76 @@ const KnowledgeStudioPage = () => {
       <Header />
       <div className="pt-16 flex h-screen">
         {/* Sidebar */}
-        <div className={`w-80 border-r border-border bg-card flex flex-col shrink-0 ${selected ? "hidden lg:flex" : "flex"}`}>
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between mb-3">
+        <div className={`w-80 border-r border-border/60 bg-card/50 flex flex-col shrink-0 ${selected ? "hidden lg:flex" : "flex"}`}>
+          <div className="p-4 border-b border-border/60">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" /> Studio
               </h2>
-              <div className="flex items-center gap-1">
-                <QuickCapture onSave={(t, c, h) => createNote(t, c, h)} />
-                <button onClick={() => createNote()} className="p-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+              <button onClick={() => createNote()} className="p-2 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-colors" title="Create new structured note">
+                <Plus className="h-4 w-4" />
+              </button>
             </div>
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search notes..."
-                className="w-full text-xs rounded-lg bg-secondary/80 border border-border pl-8 pr-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                className="w-full text-xs rounded-xl bg-secondary/50 border border-border/50 pl-8 pr-3 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30" />
             </div>
             <div className="flex gap-1 flex-wrap">
-              {allCategories.slice(0, 6).map((c) => (
+              {allCategories.slice(0, 8).map((c) => (
                 <button key={c} onClick={() => setFilterCat(c)}
-                  className={`px-2 py-1 text-[10px] rounded-md font-medium capitalize transition-colors ${filterCat === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
+                  className={`px-2 py-1 text-[10px] rounded-full font-medium capitalize transition-colors ${filterCat === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
                   {c}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 scrollbar-hide">
             <AnimatePresence>
               {filtered.map((n) => (
                 <NoteCard key={n.id} note={n} isSelected={selected?.id === n.id} onClick={() => selectNote(n)} />
               ))}
             </AnimatePresence>
             {filtered.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <div className="text-center py-16">
+                <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-sm text-muted-foreground">No notes yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Create one to get started</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Click + or use Quick Note to get started</p>
               </div>
             )}
           </div>
 
-          <div className="p-3 border-t border-border text-xs text-muted-foreground text-center">
-            {notes.length} notes · {notes.reduce((s, n) => s + (n.word_count || 0), 0)} words total
+          <div className="p-3 border-t border-border/60 text-[11px] text-muted-foreground/60 text-center">
+            {notes.length} notes · {notes.reduce((s, n) => s + (n.word_count || 0), 0)} words
           </div>
         </div>
 
         {/* Editor */}
-        <div className={`flex-1 flex flex-col ${!selected && "hidden lg:flex"}`}>
+        <div className={`flex-1 flex flex-col bg-background ${!selected && "hidden lg:flex"}`}>
           {selected ? (
             <>
               {/* Editor Header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-card/50 gap-2">
+              <div className="flex items-center justify-between px-6 py-3 border-b border-border/40 gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <button onClick={() => setSelected(null)} className="lg:hidden p-1 text-muted-foreground hover:text-foreground">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title..."
-                    className="text-xl font-bold text-foreground bg-transparent border-none outline-none flex-1 min-w-0" />
+                    className="text-2xl font-bold text-foreground bg-transparent border-none outline-none flex-1 min-w-0 placeholder:text-muted-foreground/30" />
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button onClick={() => setShowMeta(!showMeta)} className={`p-1.5 rounded-md transition-colors ${showMeta ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Settings">
+                  {/* Generate with AI button */}
+                  <button
+                    onClick={generateForCurrent}
+                    disabled={generating}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                    title="Generate – Create full structured note using AI"
+                  >
+                    {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    Generate
+                  </button>
+                  <button onClick={() => setShowMeta(!showMeta)} className={`p-1.5 rounded-md transition-colors ${showMeta ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Note settings">
                     <Filter className="h-3.5 w-3.5" />
                   </button>
                   <button onClick={() => togglePin(selected)} className={`p-1.5 rounded-md ${selected.is_pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
@@ -208,7 +286,7 @@ const KnowledgeStudioPage = () => {
                   <button onClick={() => deleteNote(selected)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
-                  <div className="flex items-center gap-2 ml-2 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-2 ml-2 text-[10px] text-muted-foreground/60">
                     <span>{wordCount}w</span>
                     {saving && <span className="text-primary flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving</span>}
                   </div>
@@ -219,28 +297,29 @@ const KnowledgeStudioPage = () => {
               <AnimatePresence>
                 {showMeta && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="border-b border-border bg-secondary/30 overflow-hidden">
-                    <div className="p-4 flex flex-wrap gap-4 items-end">
+                    className="border-b border-border/40 bg-secondary/20 overflow-hidden">
+                    <div className="p-5 max-w-[720px] mx-auto flex flex-wrap gap-5 items-end">
                       <div>
-                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1 block">Category</label>
+                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Category</label>
                         <select value={category} onChange={(e) => setCategory(e.target.value)}
-                          className="text-xs rounded-md bg-secondary border border-border px-2 py-1.5 text-foreground">
-                          {defaultCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                          className="text-xs rounded-lg bg-secondary border border-border px-3 py-2 text-foreground">
+                          <option value="general">General</option>
+                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1 block">Year</label>
+                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Year</label>
                         <input type="number" value={linkedYear} onChange={(e) => setLinkedYear(e.target.value)} placeholder="e.g. 1066"
-                          className="text-xs rounded-md bg-secondary border border-border px-2 py-1.5 text-foreground w-24" />
+                          className="text-xs rounded-lg bg-secondary border border-border px-3 py-2 text-foreground w-28" />
                       </div>
                       <div className="flex-1 min-w-[150px]">
-                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1 block">Tags (comma-separated)</label>
+                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Tags</label>
                         <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="ww2, europe..."
-                          className="text-xs rounded-md bg-secondary border border-border px-2 py-1.5 text-foreground w-full" />
+                          className="text-xs rounded-lg bg-secondary border border-border px-3 py-2 text-foreground w-full" />
                       </div>
                       <div>
-                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1 block">Color</label>
-                        <div className="flex gap-1">
+                        <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Color</label>
+                        <div className="flex gap-1.5">
                           {colorThemes.map(c => (
                             <button key={c} onClick={() => setColorTheme(c)}
                               className={`w-5 h-5 rounded-full ${themeDot[c]} ${colorTheme === c ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`} />
@@ -260,15 +339,15 @@ const KnowledgeStudioPage = () => {
           ) : (
             <div className="flex-1 flex items-center justify-center text-center p-8">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
-                  <BookOpen className="h-8 w-8 text-primary" />
+                <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <BookOpen className="h-10 w-10 text-primary" />
                 </div>
-                <p className="text-xl font-bold text-foreground mb-2">Knowledge Studio</p>
-                <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                  Your AI-powered research workspace. Create notes, extract insights from YouTube, and let AI enhance your writing.
+                <p className="text-2xl font-bold text-foreground mb-3">Knowledge Studio</p>
+                <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
+                  Your AI-powered research workspace. Capture ideas, generate structured notes from any topic or YouTube video, and let AI do the heavy lifting.
                 </p>
                 <div className="flex gap-3 justify-center">
-                  <button onClick={() => createNote()} className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium hover:opacity-90 transition-all">
+                  <button onClick={() => createNote()} className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:opacity-90 transition-all shadow-lg">
                     <Plus className="h-4 w-4" /> New Note
                   </button>
                 </div>
@@ -277,8 +356,44 @@ const KnowledgeStudioPage = () => {
           )}
         </div>
       </div>
+
+      {/* Quick Capture FAB */}
+      <QuickCapture onSave={(t, c, h, s) => createNote(t, c, h, s)} />
     </div>
   );
 };
+
+// ─── Helpers (shared with QuickCapture) ───
+
+function buildStructuredHtml(s: any, videoEmbed: string): string {
+  const kp = (s.key_points || []).map((p: string) => `<li>${p}</li>`).join("");
+  return `
+<h1>${s.title || ""}</h1>
+<p><strong>${s.headline || ""}</strong></p>
+<hr/>
+<div class="section-label">Summary</div>
+<p>${s.summary || ""}</p>
+<hr/>
+<div style="display:flex;gap:24px;flex-wrap:wrap;margin:16px 0">
+  <div><span class="section-label">Year</span><p>${s.year || "—"}</p></div>
+  <div><span class="section-label">Timeline Period</span><p>${s.timeline_period || "—"}</p></div>
+  <div><span class="section-label">Category</span><p>${s.category || "—"}</p></div>
+</div>
+<hr/>
+<div class="section-label">Key Points</div>
+<ul>${kp}</ul>
+<hr/>
+<div class="section-label">Detailed Notes</div>
+<p>${(s.detailed_notes || "").replace(/\n/g, "</p><p>")}</p>
+<hr/>
+<div class="section-label">My Thoughts</div>
+<p style="color:hsl(var(--muted-foreground));font-style:italic">${s.thoughts || "Add your thoughts here…"}</p>
+${videoEmbed}`.trim();
+}
+
+function buildStructuredPlain(s: any): string {
+  const kp = (s.key_points || []).map((p: string, i: number) => `${i + 1}. ${p}`).join("\n");
+  return `${s.title || ""}\n${s.headline || ""}\n\nSummary:\n${s.summary || ""}\n\nYear: ${s.year || ""}\nTimeline Period: ${s.timeline_period || ""}\nCategory: ${s.category || ""}\n\nKey Points:\n${kp}\n\nDetailed Notes:\n${s.detailed_notes || ""}\n\nMy Thoughts:\n${s.thoughts || ""}`;
+}
 
 export default KnowledgeStudioPage;
