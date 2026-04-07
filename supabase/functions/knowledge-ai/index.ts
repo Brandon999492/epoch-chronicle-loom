@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,14 +37,24 @@ serve(async (req) => {
       return await resp.json();
     };
 
+    const jsonResp = (d: any, status = 200) =>
+      new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const handleAiError = (data: any) => {
+      if (data.error) return jsonResp({ error: data.error }, data.status || 500);
+      return null;
+    };
+
+    const parseToolCall = (data: any) => {
+      const tc = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!tc) throw new Error("AI did not return structured data");
+      try { return JSON.parse(tc.function.arguments); } catch { throw new Error("Failed to parse AI response"); }
+    };
+
     // ─── Generate Structured Note ───
     if (action === "generate_structured_note") {
       const input = text?.trim() || url?.trim();
-      if (!input) {
-        return new Response(JSON.stringify({ error: "Provide a topic, text, or URL" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!input) return jsonResp({ error: "Provide a topic, text, or URL" }, 400);
 
       const isYoutube = input.match(/(?:youtu\.be\/|v=)([^&?]+)/);
       const userPrompt = isYoutube
@@ -61,51 +72,46 @@ serve(async (req) => {
               title: { type: "string", description: "Clear, concise title" },
               headline: { type: "string", description: "One-line engaging headline" },
               summary: { type: "string", description: "2-3 sentence summary" },
-              year: { type: "string", description: "Relevant year or date range, e.g. '1969' or '65 million years ago'" },
-              timeline_period: { type: "string", description: "Historical period, e.g. 'Modern Era', 'Mesozoic', 'Ancient'" },
-              category: { type: "string", description: "Best matching category from: Ice Age, Space, Serial Killers, Ancient Egypt, Ancient Greece, Royal Family, Dinosaurs, Earth History, Extinction Events, American History, or a custom one" },
-              key_points: { type: "array", items: { type: "string" }, description: "5-8 key points or facts" },
+              year: { type: "string", description: "Relevant year or date range" },
+              timeline_period: { type: "string", description: "Historical period" },
+              category: { type: "string", description: "Category from: Ice Age, Space, Serial Killers, Ancient Egypt, Ancient Greece, Royal Family, Dinosaurs, Earth History, Extinction Events, American History, or custom" },
+              key_points: { type: "array", items: { type: "string" }, description: "5-8 key points" },
               detailed_notes: { type: "string", description: "Detailed educational content, 3-5 paragraphs" },
-              thoughts: { type: "string", description: "Suggested reflection questions or areas for further study" },
+              thoughts: { type: "string", description: "Reflection questions or areas for further study" },
+              tags: { type: "array", items: { type: "string" }, description: "5-10 relevant tags for categorization" },
+              mentioned_figures: { type: "array", items: { type: "string" }, description: "Names of historical figures mentioned" },
+              mentioned_events: { type: "array", items: { type: "string" }, description: "Names of historical events referenced" },
             },
-            required: ["title", "headline", "summary", "year", "timeline_period", "category", "key_points", "detailed_notes", "thoughts"],
+            required: ["title", "headline", "summary", "year", "timeline_period", "category", "key_points", "detailed_notes", "thoughts", "tags", "mentioned_figures", "mentioned_events"],
             additionalProperties: false,
           },
         },
       }];
 
       const data = await callAI(
-        "You are a knowledge research assistant. Generate comprehensive, educational structured notes. Be factual, clear, and engaging. Always fill every field thoroughly.",
-        userPrompt,
-        tools,
+        "You are a knowledge research assistant. Generate comprehensive, educational structured notes. Be factual, clear, and engaging. Always fill every field thoroughly. Include relevant tags, figures, and events.",
+        userPrompt, tools,
         { type: "function", function: { name: "create_structured_note" } }
       );
 
-      if (data.error) {
-        return new Response(JSON.stringify({ error: data.error }), {
-          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const err = handleAiError(data);
+      if (err) return err;
 
-      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-      if (!toolCall) throw new Error("AI did not return structured data");
-
-      let structured;
-      try { structured = JSON.parse(toolCall.function.arguments); } catch { throw new Error("Failed to parse AI response"); }
-
+      const structured = parseToolCall(data);
       const videoId = isYoutube ? isYoutube[1] : null;
-      return new Response(JSON.stringify({ structured, videoId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+
+      // Auto-find related history from DB
+      let related = null;
+      try {
+        related = await findRelatedHistory(structured.mentioned_figures || [], structured.mentioned_events || [], structured.title);
+      } catch (e) { console.error("find_related error:", e); }
+
+      return jsonResp({ structured, videoId, related });
     }
 
     // ─── YouTube Structured Extraction ───
     if (action === "youtube_structured") {
-      if (!url) {
-        return new Response(JSON.stringify({ error: "URL is required" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!url) return jsonResp({ error: "URL is required" }, 400);
       const match = url.match(/(?:youtu\.be\/|v=)([^&?]+)/);
       const videoId = match ? match[1] : null;
 
@@ -117,104 +123,243 @@ serve(async (req) => {
           parameters: {
             type: "object",
             properties: {
-              title: { type: "string" },
-              headline: { type: "string" },
-              summary: { type: "string" },
-              year: { type: "string" },
-              timeline_period: { type: "string" },
-              category: { type: "string" },
+              title: { type: "string" }, headline: { type: "string" }, summary: { type: "string" },
+              year: { type: "string" }, timeline_period: { type: "string" }, category: { type: "string" },
               key_points: { type: "array", items: { type: "string" } },
-              detailed_notes: { type: "string" },
-              thoughts: { type: "string" },
+              detailed_notes: { type: "string" }, thoughts: { type: "string" },
+              tags: { type: "array", items: { type: "string" } },
+              mentioned_figures: { type: "array", items: { type: "string" } },
+              mentioned_events: { type: "array", items: { type: "string" } },
             },
-            required: ["title", "headline", "summary", "year", "timeline_period", "category", "key_points", "detailed_notes", "thoughts"],
+            required: ["title", "headline", "summary", "year", "timeline_period", "category", "key_points", "detailed_notes", "thoughts", "tags", "mentioned_figures", "mentioned_events"],
             additionalProperties: false,
           },
         },
       }];
 
       const data = await callAI(
-        "You are a knowledge extraction assistant. Analyze YouTube videos and extract structured educational content. Be thorough and educational.",
+        "You are a knowledge extraction assistant. Analyze YouTube videos and extract structured educational content. Be thorough and educational. Include all relevant tags, figures, and events mentioned.",
         `Analyze this YouTube video and extract structured knowledge:\nURL: ${url}\n${videoId ? `Video ID: ${videoId}` : ""}\n\nProvide comprehensive educational content based on what this video likely covers.`,
-        tools,
-        { type: "function", function: { name: "extract_youtube_note" } }
+        tools, { type: "function", function: { name: "extract_youtube_note" } }
       );
 
-      if (data.error) {
-        return new Response(JSON.stringify({ error: data.error }), {
-          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const err = handleAiError(data);
+      if (err) return err;
 
-      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-      if (!toolCall) throw new Error("AI did not return structured data");
+      const structured = parseToolCall(data);
 
-      let structured;
-      try { structured = JSON.parse(toolCall.function.arguments); } catch { throw new Error("Failed to parse AI response"); }
+      let related = null;
+      try {
+        related = await findRelatedHistory(structured.mentioned_figures || [], structured.mentioned_events || [], structured.title);
+      } catch (e) { console.error("find_related error:", e); }
 
-      return new Response(JSON.stringify({ structured, videoId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResp({ structured, videoId, related });
     }
 
-    // ─── Legacy YouTube extract (keep for backward compat) ───
+    // ─── Extract Timeline ───
+    if (action === "extract_timeline") {
+      if (!text?.trim()) return jsonResp({ error: "Text is required" }, 400);
+      const tools = [{
+        type: "function",
+        function: {
+          name: "extract_timeline",
+          description: "Extract chronological events from text.",
+          parameters: {
+            type: "object",
+            properties: {
+              events: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    year: { type: "string" },
+                    title: { type: "string" },
+                    description: { type: "string" },
+                  },
+                  required: ["year", "title", "description"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["events"],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const data = await callAI(
+        "You are a history timeline extraction expert. Extract all chronological events mentioned in the text and sort them by date.",
+        `Extract a chronological timeline from:\n\n${text}`,
+        tools, { type: "function", function: { name: "extract_timeline" } }
+      );
+      const err = handleAiError(data);
+      if (err) return err;
+      return jsonResp({ result: parseToolCall(data) });
+    }
+
+    // ─── Extract Figures ───
+    if (action === "extract_figures") {
+      if (!text?.trim()) return jsonResp({ error: "Text is required" }, 400);
+      const tools = [{
+        type: "function",
+        function: {
+          name: "extract_figures",
+          description: "Identify historical figures from text.",
+          parameters: {
+            type: "object",
+            properties: {
+              figures: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    role: { type: "string" },
+                    significance: { type: "string" },
+                  },
+                  required: ["name", "role", "significance"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["figures"],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const data = await callAI(
+        "You are a history expert. Identify all historical figures mentioned or implied in the text.",
+        `Identify all historical figures in:\n\n${text}`,
+        tools, { type: "function", function: { name: "extract_figures" } }
+      );
+      const err = handleAiError(data);
+      if (err) return err;
+      return jsonResp({ result: parseToolCall(data) });
+    }
+
+    // ─── ELI5 ───
+    if (action === "eli5") {
+      if (!text?.trim()) return jsonResp({ error: "Text is required" }, 400);
+      const data = await callAI(
+        "You are a teacher who explains complex history to a 10-year-old. Use simple words, fun analogies, and short sentences. Make it engaging and easy to understand.",
+        `Explain this like I'm 10 years old:\n\n${text}`,
+      );
+      const err = handleAiError(data);
+      if (err) return err;
+      return jsonResp({ result: data.choices?.[0]?.message?.content || "" });
+    }
+
+    // ─── Quiz ───
+    if (action === "quiz") {
+      if (!text?.trim()) return jsonResp({ error: "Text is required" }, 400);
+      const tools = [{
+        type: "function",
+        function: {
+          name: "generate_quiz",
+          description: "Generate quiz questions from educational content.",
+          parameters: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    question: { type: "string" },
+                    options: { type: "array", items: { type: "string" } },
+                    correct_index: { type: "number" },
+                    explanation: { type: "string" },
+                  },
+                  required: ["question", "options", "correct_index", "explanation"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["questions"],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const data = await callAI(
+        "You are an educational quiz creator. Generate 5 multiple-choice questions based on the content. Each question should have 4 options with exactly one correct answer.",
+        `Create 5 quiz questions from:\n\n${text}`,
+        tools, { type: "function", function: { name: "generate_quiz" } }
+      );
+      const err = handleAiError(data);
+      if (err) return err;
+      return jsonResp({ result: parseToolCall(data) });
+    }
+
+    // ─── Auto Tag ───
+    if (action === "auto_tag") {
+      if (!text?.trim()) return jsonResp({ error: "Text is required" }, 400);
+      const tools = [{
+        type: "function",
+        function: {
+          name: "auto_tag",
+          description: "Generate tags and suggest category for content.",
+          parameters: {
+            type: "object",
+            properties: {
+              tags: { type: "array", items: { type: "string" }, description: "5-10 relevant tags" },
+              category: { type: "string", description: "Best matching category" },
+              suggested_year: { type: "string", description: "Most relevant year if detectable" },
+            },
+            required: ["tags", "category"],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const data = await callAI(
+        "You are a content categorization expert for historical knowledge. Suggest tags and the best category from: Ice Age, Space, Serial Killers, Ancient Egypt, Ancient Greece, Royal Family, Dinosaurs, Earth History, Extinction Events, American History, or general.",
+        `Categorize and tag this content:\n\n${text}`,
+        tools, { type: "function", function: { name: "auto_tag" } }
+      );
+      const err = handleAiError(data);
+      if (err) return err;
+      return jsonResp({ result: parseToolCall(data) });
+    }
+
+    // ─── Find Related (DB search) ───
+    if (action === "find_related") {
+      const keywords = text?.trim();
+      if (!keywords) return jsonResp({ error: "Keywords required" }, 400);
+
+      const result = await findRelatedHistory([], [], keywords);
+      return jsonResp({ result });
+    }
+
+    // ─── Legacy YouTube extract ───
     if (action === "youtube_extract") {
-      if (!url) {
-        return new Response(JSON.stringify({ error: "URL is required" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!url) return jsonResp({ error: "URL is required" }, 400);
       const match = url.match(/(?:youtu\.be\/|v=)([^&?]+)/);
       const videoId = match ? match[1] : null;
-
       const data = await callAI(
         "You are a knowledge extraction assistant. Analyze YouTube videos and extract structured educational content.",
         `Analyze this YouTube video URL: ${url}\n${videoId ? `Video ID: ${videoId}` : ""}\n\nProvide:\n## Summary\n## Key Points\n## Important Takeaways\n## My Notes`,
       );
-
-      if (data.error) {
-        return new Response(JSON.stringify({ error: data.error }), {
-          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const result = data.choices?.[0]?.message?.content || "";
-      return new Response(JSON.stringify({ result, videoId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const err = handleAiError(data);
+      if (err) return err;
+      return jsonResp({ result: data.choices?.[0]?.message?.content || "", videoId });
     }
 
     // ─── Expand Note ───
     if (action === "expand_note") {
-      if (!text?.trim()) {
-        return new Response(JSON.stringify({ error: "Text is required" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
+      if (!text?.trim()) return jsonResp({ error: "Text is required" }, 400);
       const data = await callAI(
         "You are a knowledge assistant. Take a brief note or idea and expand it into a well-structured, educational note with sections: Summary, Key Points, and Details. Use markdown formatting.",
         `Expand this note into a comprehensive, well-structured document:\n\n${text}`,
       );
-
-      if (data.error) {
-        return new Response(JSON.stringify({ error: data.error }), {
-          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const result = data.choices?.[0]?.message?.content || "";
-      return new Response(JSON.stringify({ result }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const err = handleAiError(data);
+      if (err) return err;
+      return jsonResp({ result: data.choices?.[0]?.message?.content || "" });
     }
 
     // ─── Standard Text AI Actions ───
-    if (!text?.trim()) {
-      return new Response(JSON.stringify({ error: "Select text or write something first" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!text?.trim()) return jsonResp({ error: "Select text or write something first" }, 400);
 
     const prompts: Record<string, string> = {
       grammar: "Fix all grammar, spelling, and punctuation errors. Return ONLY the corrected text, no explanations.",
@@ -226,24 +371,13 @@ serve(async (req) => {
     };
 
     const systemPrompt = prompts[action];
-    if (!systemPrompt) {
-      return new Response(JSON.stringify({ error: "Invalid action" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!systemPrompt) return jsonResp({ error: "Invalid action" }, 400);
 
     const data = await callAI(systemPrompt, text);
+    const err = handleAiError(data);
+    if (err) return err;
 
-    if (data.error) {
-      return new Response(JSON.stringify({ error: data.error }), {
-        status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const result = data.choices?.[0]?.message?.content || "";
-    return new Response(JSON.stringify({ result }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResp({ result: data.choices?.[0]?.message?.content || "" });
   } catch (e) {
     console.error("knowledge-ai error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
@@ -251,3 +385,47 @@ serve(async (req) => {
     });
   }
 });
+
+// ─── Helper: Find related history from DB ───
+async function findRelatedHistory(figures: string[], events: string[], keywords: string) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !supabaseKey) return null;
+
+  const sb = createClient(supabaseUrl, supabaseKey);
+
+  // Extract search terms from keywords
+  const terms = keywords.split(/[\s,]+/).filter(w => w.length > 3).slice(0, 5);
+  const searchTerms = [...new Set([...figures.slice(0, 3), ...events.slice(0, 3), ...terms])].slice(0, 6);
+
+  const relatedEvents: any[] = [];
+  const relatedFigures: any[] = [];
+
+  for (const term of searchTerms) {
+    if (!term || term.length < 3) continue;
+
+    const { data: evts } = await sb
+      .from("historical_events")
+      .select("id, title, slug, year, year_label, category, description")
+      .ilike("title", `%${term}%`)
+      .limit(3);
+
+    if (evts) relatedEvents.push(...evts);
+
+    const { data: figs } = await sb
+      .from("historical_figures")
+      .select("id, name, slug, title, birth_year, death_year, image_url")
+      .ilike("name", `%${term}%`)
+      .limit(2);
+
+    if (figs) relatedFigures.push(...figs);
+  }
+
+  // Deduplicate
+  const seenE = new Set<string>();
+  const uniqueEvents = relatedEvents.filter(e => { if (seenE.has(e.id)) return false; seenE.add(e.id); return true; }).slice(0, 5);
+  const seenF = new Set<string>();
+  const uniqueFigures = relatedFigures.filter(f => { if (seenF.has(f.id)) return false; seenF.add(f.id); return true; }).slice(0, 3);
+
+  return { events: uniqueEvents, figures: uniqueFigures };
+}

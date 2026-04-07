@@ -4,7 +4,8 @@ import {
   Quote, Highlighter, Type, Palette, Image, Sparkles,
   Check, Wand2, BookOpen, Maximize2, RotateCcw, Loader2, X,
   ChevronDown, ChevronUp, AlignLeft, Mic, MicOff, Volume2, Square,
-  MoreHorizontal, Minus, Plus
+  MoreHorizontal, Minus, Plus, Brain, Clock, Users, HelpCircle,
+  Lightbulb, FileText, Eye, EyeOff
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,6 +16,10 @@ interface SmartEditorProps {
   content: string;
   onChange: (html: string, text: string) => void;
   settings?: StudioSettings;
+  focusMode?: boolean;
+  readingMode?: boolean;
+  onQuizGenerated?: (quiz: any) => void;
+  onTimelineExtracted?: (timeline: any) => void;
 }
 
 export interface StudioSettings {
@@ -30,7 +35,7 @@ const fontSizes = ["14px", "16px", "18px", "20px", "24px"];
 const textColors = ["#e2e8f0", "#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#fb923c"];
 const highlightColors = ["transparent", "#fef08a40", "#bbf7d040", "#bfdbfe40", "#fecaca40", "#e9d5ff40"];
 
-export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
+export function SmartEditor({ content, onChange, settings, focusMode, readingMode, onQuizGenerated, onTimelineExtracted }: SmartEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [showAdvanced, setShowAdvanced] = useState(settings?.editorMode === "advanced");
@@ -47,6 +52,7 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSpeed, setSpeechSpeed] = useState(1);
+  const [documentaryMode, setDocumentaryMode] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   const fs = fontSizeMap[settings?.fontSize || "medium"];
@@ -67,26 +73,14 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
   useEffect(() => {
     const handleSelectionChange = () => {
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-        setSelectionMenu(null);
-        return;
-      }
-      if (!editorRef.current?.contains(sel.anchorNode)) {
-        setSelectionMenu(null);
-        return;
-      }
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) { setSelectionMenu(null); return; }
+      if (!editorRef.current?.contains(sel.anchorNode)) { setSelectionMenu(null); return; }
       const range = sel.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       const editorRect = editorRef.current!.getBoundingClientRect();
-
       let x = rect.left + rect.width / 2 - editorRect.left;
       let y = rect.top - editorRect.top - 8;
-
-      // Viewport boundary check
-      if (isMobile) {
-        x = Math.max(120, Math.min(x, editorRect.width - 120));
-      }
-
+      if (isMobile) x = Math.max(120, Math.min(x, editorRect.width - 120));
       setSelectionMenu({ x, y });
     };
     document.addEventListener("selectionchange", handleSelectionChange);
@@ -101,7 +95,6 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
 
     if (!text.trim()) { toast.error("Select text or write something first"); return; }
 
-    // Save the selection range for later replacement
     if (wasSelection && sel && sel.rangeCount > 0) {
       savedRangeRef.current = sel.getRangeAt(0).cloneRange();
     } else {
@@ -115,6 +108,33 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
       const { data, error } = await supabase.functions.invoke("knowledge-ai", { body: { action, text: wasSelection ? selectedText : text } });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); setAiLoading(false); return; }
+
+      // Handle structured results (not preview-based)
+      if (action === "extract_timeline") {
+        onTimelineExtracted?.(data.result);
+        toast.success("Timeline extracted!");
+        setAiLoading(false);
+        return;
+      }
+      if (action === "extract_figures") {
+        const figs = data.result?.figures || [];
+        const figText = figs.map((f: any) => `**${f.name}** — ${f.role}: ${f.significance}`).join("\n");
+        setAiPreview({ original: text.slice(0, 200) + "…", result: figText, action: "Figures Found", wasSelection: false });
+        setAiLoading(false);
+        return;
+      }
+      if (action === "quiz") {
+        onQuizGenerated?.(data.result);
+        toast.success("Quiz generated!");
+        setAiLoading(false);
+        return;
+      }
+      if (action === "auto_tag") {
+        toast.success(`Tags: ${(data.result?.tags || []).join(", ")}`);
+        setAiLoading(false);
+        return;
+      }
+
       setAiPreview({ original: wasSelection ? selectedText : text, result: data.result, action, wasSelection });
     } catch (e: any) {
       toast.error(e.message || "AI failed");
@@ -125,9 +145,7 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
 
   const acceptAiResult = () => {
     if (!aiPreview || !editorRef.current) return;
-
     if (aiPreview.wasSelection && savedRangeRef.current) {
-      // Replace only the selected range
       const sel = window.getSelection();
       if (sel) {
         sel.removeAllRanges();
@@ -135,7 +153,6 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
         document.execCommand("insertText", false, aiPreview.result);
       }
     } else {
-      // Replace entire content
       editorRef.current.innerHTML = aiPreview.result.replace(/\n/g, "<br/>");
     }
     syncContent();
@@ -152,11 +169,7 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
 
   // ─── Voice: Speech-to-Text ───
   const toggleRecording = () => {
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      setIsRecording(false);
-      return;
-    }
+    if (isRecording) { recognitionRef.current?.stop(); setIsRecording(false); return; }
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) { toast.error("Speech recognition not supported in this browser"); return; }
 
@@ -167,9 +180,7 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
     recognition.onresult = (event: any) => {
       let transcript = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          transcript += event.results[i][0].transcript;
-        }
+        if (event.results[i].isFinal) transcript += event.results[i][0].transcript;
       }
       if (transcript && editorRef.current) {
         editorRef.current.focus();
@@ -184,23 +195,39 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
     setIsRecording(true);
   };
 
-  // ─── Voice: Text-to-Speech ───
+  // ─── Voice: Text-to-Speech (with Documentary Mode) ───
   const speakText = () => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
+    if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); return; }
     const sel = window.getSelection();
     const text = sel?.toString().trim() || editorRef.current?.innerText || "";
     if (!text.trim()) { toast.error("Nothing to read"); return; }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = speechSpeed;
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
+    if (documentaryMode) {
+      // Paragraph-by-paragraph with pauses
+      const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+      setIsSpeaking(true);
+      let i = 0;
+      const speakNext = () => {
+        if (i >= paragraphs.length) { setIsSpeaking(false); return; }
+        const utterance = new SpeechSynthesisUtterance(paragraphs[i]);
+        utterance.rate = 0.75;
+        utterance.pitch = 0.9;
+        utterance.onend = () => {
+          i++;
+          setTimeout(speakNext, 1500);
+        };
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+      };
+      speakNext();
+    } else {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = speechSpeed;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+      setIsSpeaking(true);
+    }
   };
 
   const ToolBtn = ({ onClick, active, children, title }: { onClick: () => void; active?: boolean; children: React.ReactNode; title: string }) => (
@@ -211,13 +238,52 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
     </button>
   );
 
-  const aiActions = [
+  const aiWritingActions = [
     { action: "grammar", label: "Fix Grammar", icon: Check },
     { action: "simplify", label: "Simplify", icon: AlignLeft },
     { action: "expand", label: "Expand", icon: Maximize2 },
     { action: "summarize", label: "Summarize", icon: BookOpen },
     { action: "rewrite", label: "Rewrite", icon: RotateCcw },
   ];
+
+  const aiLearningActions = [
+    { action: "extract_timeline", label: "Extract Timeline", icon: Clock },
+    { action: "extract_figures", label: "Find Figures", icon: Users },
+    { action: "eli5", label: "Explain Like I'm 10", icon: Lightbulb },
+    { action: "quiz", label: "Generate Quiz", icon: HelpCircle },
+    { action: "auto_tag", label: "Auto-Tag", icon: FileText },
+  ];
+
+  if (focusMode) {
+    return (
+      <div className="flex-1 overflow-y-auto relative">
+        <div
+          ref={editorRef}
+          contentEditable={!readingMode}
+          suppressContentEditableWarning
+          onInput={syncContent}
+          onBlur={syncContent}
+          dangerouslySetInnerHTML={{ __html: content }}
+          style={{ maxWidth: mw, fontSize: readingMode ? `calc(${fs} + 1px)` : fs }}
+          className={`mx-auto px-4 sm:px-8 py-8 sm:py-12 outline-none min-h-[400px]
+            leading-[2.0]
+            ${readingMode ? "bg-amber-50/5" : ""}
+            [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-8 [&_h1]:text-foreground
+            [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-foreground
+            [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:text-primary
+            [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-5
+            [&_img]:rounded-xl [&_img]:max-w-full [&_img]:my-6 [&_img]:shadow-sm [&_img]:border [&_img]:border-border/30 [&_img]:mx-auto [&_img]:block
+            [&_iframe]:rounded-xl [&_iframe]:my-6
+            [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-4 [&_ul]:space-y-1
+            [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-4 [&_ol]:space-y-1
+            [&_li]:mb-1.5 [&_li]:leading-relaxed [&_p]:mb-5
+            [&_a]:text-primary [&_a]:underline
+            [&_hr]:border-border/50 [&_hr]:my-10
+            [&_.section-label]:text-xs [&_.section-label]:uppercase [&_.section-label]:tracking-widest [&_.section-label]:text-primary/60 [&_.section-label]:font-semibold [&_.section-label]:mt-8 [&_.section-label]:mb-2`}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -249,7 +315,7 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-primary font-medium mb-1.5">After</p>
-                  <div className="text-sm leading-relaxed text-foreground bg-card rounded-lg p-3 border border-primary/30 max-h-40 overflow-y-auto">
+                  <div className="text-sm leading-relaxed text-foreground bg-card rounded-lg p-3 border border-primary/30 max-h-40 overflow-y-auto whitespace-pre-wrap">
                     {aiPreview.result}
                   </div>
                 </div>
@@ -260,69 +326,81 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
       </AnimatePresence>
 
       {/* Top Bar */}
-      <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 border-b border-border/50 bg-card/30 flex-wrap">
-        {/* AI Assist dropdown */}
-        <div className="relative">
-          <button
-            disabled={aiLoading}
-            onClick={() => setShowAiMenu(!showAiMenu)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0 sm:py-1.5"
-            title="AI Assist – improves your writing"
-          >
-            {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            AI Assist
-          </button>
-          <AnimatePresence>
-            {showAiMenu && (
-              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-                className="absolute top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-xl p-1 z-50 w-52">
-                <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">AI Writing Assistant</p>
-                {aiActions.map(({ action, label, icon: Icon }) => (
-                  <button key={action} onClick={() => aiAction(action)} disabled={aiLoading}
-                    className="flex items-center gap-2 w-full px-2 py-2.5 sm:py-1.5 text-xs text-foreground hover:bg-secondary rounded-md transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0">
-                    <Icon className="h-3.5 w-3.5 text-primary" />{label}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Voice buttons */}
-        <ToolBtn onClick={toggleRecording} active={isRecording} title={isRecording ? "Stop recording" : "Voice input"}>
-          {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-        </ToolBtn>
-        {isRecording && (
-          <span className="flex items-center gap-1 text-[10px] text-red-400 font-medium animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-red-500" /> Recording
-          </span>
-        )}
-
-        <ToolBtn onClick={speakText} active={isSpeaking} title={isSpeaking ? "Stop reading" : "Read aloud"}>
-          {isSpeaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-        </ToolBtn>
-        {isSpeaking && (
-          <div className="flex items-center gap-1">
-            <button onClick={() => setSpeechSpeed(Math.max(0.5, speechSpeed - 0.25))} className="p-1 text-muted-foreground hover:text-foreground"><Minus className="h-3 w-3" /></button>
-            <span className="text-[10px] text-muted-foreground w-6 text-center">{speechSpeed}x</span>
-            <button onClick={() => setSpeechSpeed(Math.min(2, speechSpeed + 0.25))} className="p-1 text-muted-foreground hover:text-foreground"><Plus className="h-3 w-3" /></button>
+      {!readingMode && (
+        <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 border-b border-border/50 bg-card/30 flex-wrap">
+          {/* AI Assist dropdown */}
+          <div className="relative">
+            <button disabled={aiLoading} onClick={() => setShowAiMenu(!showAiMenu)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0 sm:py-1.5">
+              {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              AI Assist
+            </button>
+            <AnimatePresence>
+              {showAiMenu && (
+                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
+                  className="absolute top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-xl p-1 z-50 w-56">
+                  <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Writing</p>
+                  {aiWritingActions.map(({ action, label, icon: Icon }) => (
+                    <button key={action} onClick={() => aiAction(action)} disabled={aiLoading}
+                      className="flex items-center gap-2 w-full px-2 py-2.5 sm:py-1.5 text-xs text-foreground hover:bg-secondary rounded-md transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0">
+                      <Icon className="h-3.5 w-3.5 text-primary" />{label}
+                    </button>
+                  ))}
+                  <div className="border-t border-border/50 my-1" />
+                  <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Learning Tools</p>
+                  {aiLearningActions.map(({ action, label, icon: Icon }) => (
+                    <button key={action} onClick={() => aiAction(action)} disabled={aiLoading}
+                      className="flex items-center gap-2 w-full px-2 py-2.5 sm:py-1.5 text-xs text-foreground hover:bg-secondary rounded-md transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0">
+                      <Icon className="h-3.5 w-3.5 text-amber-400" />{label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        )}
 
-        <div className="flex-1" />
+          {/* Voice buttons */}
+          <ToolBtn onClick={toggleRecording} active={isRecording} title={isRecording ? "Stop recording" : "Voice input"}>
+            {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+          </ToolBtn>
+          {isRecording && (
+            <span className="flex items-center gap-1 text-[10px] text-destructive font-medium animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-destructive" /> Recording
+            </span>
+          )}
 
-        <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-1 px-2.5 py-2 sm:py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-md min-h-[44px] sm:min-h-0"
-        >
-          {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          {showAdvanced ? "Simple" : "Advanced"}
-        </button>
-      </div>
+          <div className="relative">
+            <ToolBtn onClick={speakText} active={isSpeaking} title={isSpeaking ? "Stop reading" : "Read aloud"}>
+              {isSpeaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </ToolBtn>
+          </div>
+
+          {isSpeaking && (
+            <div className="flex items-center gap-1">
+              <button onClick={() => setSpeechSpeed(Math.max(0.5, speechSpeed - 0.25))} className="p-1 text-muted-foreground hover:text-foreground"><Minus className="h-3 w-3" /></button>
+              <span className="text-[10px] text-muted-foreground w-6 text-center">{speechSpeed}x</span>
+              <button onClick={() => setSpeechSpeed(Math.min(2, speechSpeed + 0.25))} className="p-1 text-muted-foreground hover:text-foreground"><Plus className="h-3 w-3" /></button>
+            </div>
+          )}
+
+          {/* Documentary mode toggle */}
+          <ToolBtn onClick={() => { setDocumentaryMode(!documentaryMode); toast.info(documentaryMode ? "Normal voice mode" : "Documentary mode on"); }} active={documentaryMode} title="Documentary Mode">
+            <Brain className="h-3.5 w-3.5" />
+          </ToolBtn>
+
+          <div className="flex-1" />
+
+          <button onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-1 px-2.5 py-2 sm:py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-md min-h-[44px] sm:min-h-0">
+            {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {showAdvanced ? "Simple" : "Advanced"}
+          </button>
+        </div>
+      )}
 
       {/* Advanced Toolbar */}
       <AnimatePresence>
-        {showAdvanced && (
+        {showAdvanced && !readingMode && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-b border-border/50 bg-card/20">
             <div className="flex items-center gap-0.5 flex-wrap px-3 sm:px-5 py-2">
@@ -384,14 +462,15 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
       <div className="flex-1 overflow-y-auto relative">
         <div
           ref={editorRef}
-          contentEditable
+          contentEditable={!readingMode}
           suppressContentEditableWarning
           onInput={syncContent}
           onBlur={syncContent}
           dangerouslySetInnerHTML={{ __html: content }}
-          style={{ maxWidth: mw, fontSize: fs }}
-          className="mx-auto px-4 sm:px-6 py-6 sm:py-8 outline-none min-h-[400px]
+          style={{ maxWidth: mw, fontSize: readingMode ? `calc(${fs} + 1px)` : fs }}
+          className={`mx-auto px-4 sm:px-6 py-6 sm:py-8 outline-none min-h-[400px]
             leading-[1.9]
+            ${readingMode ? "bg-amber-50/5" : ""}
             [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-8 [&_h1]:text-foreground
             [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-foreground
             [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:text-primary
@@ -400,17 +479,16 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
             [&_iframe]:rounded-xl [&_iframe]:my-6
             [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-4 [&_ul]:space-y-1
             [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-4 [&_ol]:space-y-1
-            [&_li]:mb-1.5 [&_li]:leading-relaxed
-            [&_p]:mb-5
+            [&_li]:mb-1.5 [&_li]:leading-relaxed [&_p]:mb-5
             [&_a]:text-primary [&_a]:underline
             [&_hr]:border-border/50 [&_hr]:my-10
-            [&_.section-label]:text-xs [&_.section-label]:uppercase [&_.section-label]:tracking-widest [&_.section-label]:text-primary/60 [&_.section-label]:font-semibold [&_.section-label]:mt-8 [&_.section-label]:mb-2"
+            [&_.section-label]:text-xs [&_.section-label]:uppercase [&_.section-label]:tracking-widest [&_.section-label]:text-primary/60 [&_.section-label]:font-semibold [&_.section-label]:mt-8 [&_.section-label]:mb-2`}
           data-placeholder="Start writing your notes..."
         />
 
         {/* Floating Inline AI Menu */}
         <AnimatePresence>
-          {selectionMenu && !aiLoading && !aiPreview && (
+          {selectionMenu && !aiLoading && !aiPreview && !readingMode && (
             <motion.div
               initial={{ opacity: 0, y: 4, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -420,20 +498,18 @@ export function SmartEditor({ content, onChange, settings }: SmartEditorProps) {
             >
               {isMobile ? (
                 <div className="flex flex-wrap gap-0.5 max-w-[280px]">
-                  {aiActions.map(({ action, label, icon: Icon }) => (
+                  {aiWritingActions.map(({ action, label, icon: Icon }) => (
                     <button key={action} onClick={() => aiAction(action)}
-                      className="flex items-center gap-1 px-2 py-2 text-[11px] rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors whitespace-nowrap min-h-[44px]"
-                      title={label}>
+                      className="flex items-center gap-1 px-2 py-2 text-[11px] rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors whitespace-nowrap min-h-[44px]">
                       <Icon className="h-3.5 w-3.5" /> {label}
                     </button>
                   ))}
                 </div>
               ) : (
                 <div className="flex items-center gap-0.5">
-                  {aiActions.map(({ action, label, icon: Icon }) => (
+                  {aiWritingActions.map(({ action, label, icon: Icon }) => (
                     <button key={action} onClick={() => aiAction(action)}
-                      className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
-                      title={label}>
+                      className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors whitespace-nowrap">
                       <Icon className="h-3 w-3" /> {label}
                     </button>
                   ))}
