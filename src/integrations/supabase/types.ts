@@ -799,6 +799,42 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_paths: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          difficulty: string | null
+          icon: string | null
+          id: string
+          lesson_count: number | null
+          slug: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          icon?: string | null
+          id?: string
+          lesson_count?: number | null
+          slug?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          icon?: string | null
+          id?: string
+          lesson_count?: number | null
+          slug?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           alternate_names: string[] | null
@@ -937,6 +973,47 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_results: {
+        Row: {
+          answers: Json | null
+          created_at: string
+          id: string
+          lesson_index: number | null
+          path_id: string | null
+          score: number
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string
+          id?: string
+          lesson_index?: number | null
+          path_id?: string | null
+          score?: number
+          total_questions?: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string
+          id?: string
+          lesson_index?: number | null
+          path_id?: string | null
+          score?: number
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_results_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recently_viewed: {
         Row: {
           category: string | null
@@ -1013,6 +1090,53 @@ export type Database = {
             columns: ["parent_period_id"]
             isOneToOne: false
             referencedRelation: "time_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_lesson_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          lesson_content: string | null
+          lesson_index: number
+          lesson_title: string | null
+          path_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson_content?: string | null
+          lesson_index?: number
+          lesson_title?: string | null
+          path_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson_content?: string | null
+          lesson_index?: number
+          lesson_title?: string | null
+          path_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_lesson_progress_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
             referencedColumns: ["id"]
           },
         ]
