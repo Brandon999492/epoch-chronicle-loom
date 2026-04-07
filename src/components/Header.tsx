@@ -16,6 +16,7 @@ const navItems = [
   { label: "History AI", path: "/history-ai" },
   { label: "Learn", path: "/learn" },
   { label: "Video Studio", path: "/video-studio" },
+  { label: "Studio", path: "/studio" },
 ];
 
 export function Header() {

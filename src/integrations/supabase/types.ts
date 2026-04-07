@@ -772,6 +772,69 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_notes: {
+        Row: {
+          category: string | null
+          color_theme: string | null
+          content: string | null
+          created_at: string
+          html_content: string | null
+          id: string
+          is_favorite: boolean | null
+          is_pinned: boolean | null
+          is_public: boolean | null
+          linked_era: string | null
+          linked_event_id: string | null
+          linked_year: number | null
+          media_urls: string[] | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+          word_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          color_theme?: string | null
+          content?: string | null
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          is_pinned?: boolean | null
+          is_public?: boolean | null
+          linked_era?: string | null
+          linked_event_id?: string | null
+          linked_year?: number | null
+          media_urls?: string[] | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id: string
+          word_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          color_theme?: string | null
+          content?: string | null
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          is_pinned?: boolean | null
+          is_public?: boolean | null
+          linked_era?: string | null
+          linked_event_id?: string | null
+          linked_year?: number | null
+          media_urls?: string[] | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          word_count?: number | null
+        }
+        Relationships: []
+      }
       learned_events: {
         Row: {
           category: string | null
