@@ -3,12 +3,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/studio/NoteCard";
-import { SmartEditor } from "@/components/studio/SmartEditor";
+import { SmartEditor, type StudioSettings } from "@/components/studio/SmartEditor";
 import { QuickCapture } from "@/components/studio/QuickCapture";
+import { StudioSettingsPanel } from "@/components/studio/StudioSettings";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Pin, Heart, Trash2, Filter, BookOpen, ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { Plus, Search, Pin, Heart, Trash2, Filter, BookOpen, ArrowLeft, Loader2, Sparkles, Settings, MoreVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const CATEGORIES = [
   "Ice Age", "Space", "Serial Killers", "Ancient Egypt", "Ancient Greece",
@@ -50,9 +52,12 @@ type KNote = {
   created_at: string; updated_at: string;
 };
 
+const DEFAULT_SETTINGS: StudioSettings = { fontSize: "medium", readingWidth: "medium", editorMode: "simple", animations: true };
+
 const KnowledgeStudioPage = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [notes, setNotes] = useState<KNote[]>([]);
   const [selected, setSelected] = useState<KNote | null>(null);
   const [title, setTitle] = useState("");
@@ -67,6 +72,21 @@ const KnowledgeStudioPage = () => {
   const [saving, setSaving] = useState(false);
   const [showMeta, setShowMeta] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showMobileActions, setShowMobileActions] = useState(false);
+
+  // Settings from localStorage
+  const [settings, setSettings] = useState<StudioSettings>(() => {
+    try {
+      const saved = localStorage.getItem("studio-settings");
+      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    } catch { return DEFAULT_SETTINGS; }
+  });
+
+  const updateSettings = (s: StudioSettings) => {
+    setSettings(s);
+    localStorage.setItem("studio-settings", JSON.stringify(s));
+  };
 
   useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [user, authLoading, navigate]);
 
@@ -93,44 +113,24 @@ const KnowledgeStudioPage = () => {
 
     const { data, error } = await supabase
       .from("knowledge_notes")
-      .insert({
-        user_id: user.id,
-        title: noteTitle,
-        content: noteContent,
-        html_content: noteHtml,
-        category: noteCategory,
-        linked_year: noteYear,
-      })
+      .insert({ user_id: user.id, title: noteTitle, content: noteContent, html_content: noteHtml, category: noteCategory, linked_year: noteYear })
       .select()
       .single();
-    if (data) {
-      setNotes((prev) => [data as KNote, ...prev]);
-      selectNote(data as KNote);
-      if (quickTitle) toast.success("Note created!");
-    }
+    if (data) { setNotes((prev) => [data as KNote, ...prev]); selectNote(data as KNote); if (quickTitle) toast.success("Note created!"); }
     if (error) toast.error("Failed to create note");
   };
 
   const selectNote = (n: KNote) => {
-    setSelected(n);
-    setTitle(n.title);
-    setHtmlContent(n.html_content || n.content || "");
-    setPlainContent(n.content || "");
-    setCategory(n.category || "general");
-    setColorTheme(n.color_theme || "default");
-    setLinkedYear(n.linked_year?.toString() || "");
-    setTagsInput((n.tags || []).join(", "));
-    setShowMeta(false);
+    setSelected(n); setTitle(n.title); setHtmlContent(n.html_content || n.content || "");
+    setPlainContent(n.content || ""); setCategory(n.category || "general");
+    setColorTheme(n.color_theme || "default"); setLinkedYear(n.linked_year?.toString() || "");
+    setTagsInput((n.tags || []).join(", ")); setShowMeta(false); setShowMobileActions(false);
   };
 
-  // Generate note with AI for current note
   const generateForCurrent = async () => {
     if (!selected) return;
     const topic = title.trim() || plainContent.trim().slice(0, 200);
-    if (!topic || topic === "Untitled Note") {
-      toast.error("Enter a title or some text first");
-      return;
-    }
+    if (!topic || topic === "Untitled Note") { toast.error("Enter a title or some text first"); return; }
     setGenerating(true);
     try {
       const isYt = topic.match(/(?:youtu\.be\/|v=)([^&?]+)/);
@@ -148,17 +148,13 @@ const KnowledgeStudioPage = () => {
       const html = buildStructuredHtml(s, videoEmbed);
       const plain = buildStructuredPlain(s);
 
-      setTitle(s.title || title);
-      setHtmlContent(html);
-      setPlainContent(plain);
+      setTitle(s.title || title); setHtmlContent(html); setPlainContent(plain);
       if (s.category) setCategory(s.category);
       if (s.year) setLinkedYear(s.year);
       toast.success("Note generated with AI!");
     } catch (e: any) {
       toast.error(e.message || "AI generation failed");
-    } finally {
-      setGenerating(false);
-    }
+    } finally { setGenerating(false); }
   };
 
   // Autosave
@@ -185,8 +181,7 @@ const KnowledgeStudioPage = () => {
   const deleteNote = async (n: KNote) => {
     await supabase.from("knowledge_notes").delete().eq("id", n.id);
     if (selected?.id === n.id) setSelected(null);
-    fetchNotes();
-    toast.success("Note deleted");
+    fetchNotes(); toast.success("Note deleted");
   };
 
   const filtered = notes.filter((n) => {
@@ -205,25 +200,31 @@ const KnowledgeStudioPage = () => {
       <Header />
       <div className="pt-16 flex h-screen">
         {/* Sidebar */}
-        <div className={`w-80 border-r border-border/60 bg-card/50 flex flex-col shrink-0 ${selected ? "hidden lg:flex" : "flex"}`}>
+        <div className={`w-full sm:w-80 border-r border-border/60 bg-card/50 flex flex-col shrink-0 ${selected ? "hidden lg:flex" : "flex"}`}>
           <div className="p-4 border-b border-border/60">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" /> Studio
               </h2>
-              <button onClick={() => createNote()} className="p-2 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-colors" title="Create new structured note">
-                <Plus className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setShowSettings(true)} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Settings">
+                  <Settings className="h-4 w-4" />
+                </button>
+                <button onClick={() => createNote()} className="p-2 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Create new structured note">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search notes..."
-                className="w-full text-xs rounded-xl bg-secondary/50 border border-border/50 pl-8 pr-3 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                className="w-full text-sm rounded-xl bg-secondary/50 border border-border/50 pl-8 pr-3 py-3 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30 min-h-[44px]" />
             </div>
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
               {allCategories.slice(0, 8).map((c) => (
                 <button key={c} onClick={() => setFilterCat(c)}
-                  className={`px-2 py-1 text-[10px] rounded-full font-medium capitalize transition-colors ${filterCat === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
+                  className={`px-2.5 py-1.5 text-[11px] rounded-full font-medium capitalize transition-colors min-h-[32px]
+                    ${filterCat === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
                   {c}
                 </button>
               ))}
@@ -254,39 +255,72 @@ const KnowledgeStudioPage = () => {
         <div className={`flex-1 flex flex-col bg-background ${!selected && "hidden lg:flex"}`}>
           {selected ? (
             <>
-              {/* Editor Header */}
-              <div className="flex items-center justify-between px-6 py-3 border-b border-border/40 gap-2">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <button onClick={() => setSelected(null)} className="lg:hidden p-1 text-muted-foreground hover:text-foreground">
+              {/* Editor Header — mobile responsive */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 border-b border-border/40 gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <button onClick={() => setSelected(null)} className="lg:hidden p-2 text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title..."
-                    className="text-2xl font-bold text-foreground bg-transparent border-none outline-none flex-1 min-w-0 placeholder:text-muted-foreground/30" />
+                    className="text-xl sm:text-2xl font-bold text-foreground bg-transparent border-none outline-none flex-1 min-w-0 placeholder:text-muted-foreground/30" />
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Generate with AI button */}
-                  <button
-                    onClick={generateForCurrent}
-                    disabled={generating}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
-                    title="Generate – Create full structured note using AI"
-                  >
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={generateForCurrent} disabled={generating}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 min-h-[44px]"
+                    title="Generate – Create full structured note using AI">
                     {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                     Generate
                   </button>
-                  <button onClick={() => setShowMeta(!showMeta)} className={`p-1.5 rounded-md transition-colors ${showMeta ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Note settings">
-                    <Filter className="h-3.5 w-3.5" />
-                  </button>
-                  <button onClick={() => togglePin(selected)} className={`p-1.5 rounded-md ${selected.is_pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                    <Pin className="h-3.5 w-3.5" />
-                  </button>
-                  <button onClick={() => toggleFav(selected)} className={`p-1.5 rounded-md ${selected.is_favorite ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                    <Heart className={`h-3.5 w-3.5 ${selected.is_favorite ? "fill-primary" : ""}`} />
-                  </button>
-                  <button onClick={() => deleteNote(selected)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                  <div className="flex items-center gap-2 ml-2 text-[10px] text-muted-foreground/60">
+
+                  {isMobile ? (
+                    /* Mobile: collapse actions into dropdown */
+                    <div className="relative">
+                      <button onClick={() => setShowMobileActions(!showMobileActions)}
+                        className="p-2 rounded-md text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center">
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      <AnimatePresence>
+                        {showMobileActions && (
+                          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
+                            className="absolute top-full right-0 mt-1 bg-card border border-border rounded-xl shadow-xl p-1 z-50 w-44">
+                            <button onClick={() => { setShowMeta(!showMeta); setShowMobileActions(false); }}
+                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary min-h-[44px]">
+                              <Filter className="h-3.5 w-3.5" /> Note Settings
+                            </button>
+                            <button onClick={() => { togglePin(selected); setShowMobileActions(false); }}
+                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary min-h-[44px]">
+                              <Pin className="h-3.5 w-3.5" /> {selected.is_pinned ? "Unpin" : "Pin"}
+                            </button>
+                            <button onClick={() => { toggleFav(selected); setShowMobileActions(false); }}
+                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary min-h-[44px]">
+                              <Heart className="h-3.5 w-3.5" /> {selected.is_favorite ? "Unfavorite" : "Favorite"}
+                            </button>
+                            <button onClick={() => { deleteNote(selected); setShowMobileActions(false); }}
+                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary text-destructive min-h-[44px]">
+                              <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
+                    /* Desktop actions */
+                    <>
+                      <button onClick={() => setShowMeta(!showMeta)} className={`p-2 rounded-md transition-colors ${showMeta ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Note settings">
+                        <Filter className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => togglePin(selected)} className={`p-2 rounded-md ${selected.is_pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                        <Pin className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => toggleFav(selected)} className={`p-2 rounded-md ${selected.is_favorite ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                        <Heart className={`h-3.5 w-3.5 ${selected.is_favorite ? "fill-primary" : ""}`} />
+                      </button>
+                      <button onClick={() => deleteNote(selected)} className="p-2 rounded-md text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                  <div className="flex items-center gap-2 ml-1 text-[10px] text-muted-foreground/60">
                     <span>{wordCount}w</span>
                     {saving && <span className="text-primary flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving</span>}
                   </div>
@@ -298,11 +332,11 @@ const KnowledgeStudioPage = () => {
                 {showMeta && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                     className="border-b border-border/40 bg-secondary/20 overflow-hidden">
-                    <div className="p-5 max-w-[720px] mx-auto flex flex-wrap gap-5 items-end">
+                    <div className="p-4 sm:p-5 max-w-[720px] mx-auto flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-5 sm:items-end">
                       <div>
                         <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Category</label>
                         <select value={category} onChange={(e) => setCategory(e.target.value)}
-                          className="text-xs rounded-lg bg-secondary border border-border px-3 py-2 text-foreground">
+                          className="text-sm rounded-lg bg-secondary border border-border px-3 py-2.5 text-foreground min-h-[44px] w-full sm:w-auto">
                           <option value="general">General</option>
                           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -310,19 +344,19 @@ const KnowledgeStudioPage = () => {
                       <div>
                         <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Year</label>
                         <input type="number" value={linkedYear} onChange={(e) => setLinkedYear(e.target.value)} placeholder="e.g. 1066"
-                          className="text-xs rounded-lg bg-secondary border border-border px-3 py-2 text-foreground w-28" />
+                          className="text-sm rounded-lg bg-secondary border border-border px-3 py-2.5 text-foreground w-full sm:w-28 min-h-[44px]" />
                       </div>
                       <div className="flex-1 min-w-[150px]">
                         <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Tags</label>
                         <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="ww2, europe..."
-                          className="text-xs rounded-lg bg-secondary border border-border px-3 py-2 text-foreground w-full" />
+                          className="text-sm rounded-lg bg-secondary border border-border px-3 py-2.5 text-foreground w-full min-h-[44px]" />
                       </div>
                       <div>
                         <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Color</label>
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-2">
                           {colorThemes.map(c => (
                             <button key={c} onClick={() => setColorTheme(c)}
-                              className={`w-5 h-5 rounded-full ${themeDot[c]} ${colorTheme === c ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`} />
+                              className={`w-7 h-7 rounded-full ${themeDot[c]} ${colorTheme === c ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`} />
                           ))}
                         </div>
                       </div>
@@ -331,9 +365,9 @@ const KnowledgeStudioPage = () => {
                 )}
               </AnimatePresence>
 
-              {/* Smart Editor */}
+              {/* Editor */}
               <div className="flex-1 overflow-hidden relative">
-                <SmartEditor content={htmlContent} onChange={(html, text) => { setHtmlContent(html); setPlainContent(text); }} />
+                <SmartEditor content={htmlContent} onChange={(html, text) => { setHtmlContent(html); setPlainContent(text); }} settings={settings} />
               </div>
             </>
           ) : (
@@ -344,10 +378,10 @@ const KnowledgeStudioPage = () => {
                 </div>
                 <p className="text-2xl font-bold text-foreground mb-3">Knowledge Studio</p>
                 <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
-                  Your AI-powered research workspace. Capture ideas, generate structured notes from any topic or YouTube video, and let AI do the heavy lifting.
+                  Your AI-powered research workspace. Capture ideas, generate structured notes from any topic or YouTube video.
                 </p>
                 <div className="flex gap-3 justify-center">
-                  <button onClick={() => createNote()} className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:opacity-90 transition-all shadow-lg">
+                  <button onClick={() => createNote()} className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:opacity-90 transition-all shadow-lg min-h-[48px]">
                     <Plus className="h-4 w-4" /> New Note
                   </button>
                 </div>
@@ -357,13 +391,16 @@ const KnowledgeStudioPage = () => {
         </div>
       </div>
 
-      {/* Quick Capture FAB */}
       <QuickCapture onSave={(t, c, h, s) => createNote(t, c, h, s)} />
+
+      <AnimatePresence>
+        {showSettings && (
+          <StudioSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} settings={settings} onChange={updateSettings} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
-
-// ─── Helpers (shared with QuickCapture) ───
 
 function buildStructuredHtml(s: any, videoEmbed: string): string {
   const kp = (s.key_points || []).map((p: string) => `<li>${p}</li>`).join("");
