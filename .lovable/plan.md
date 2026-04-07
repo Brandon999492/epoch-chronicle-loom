@@ -1,63 +1,327 @@
+Apple Notes-Style Knowledge Studio Refactor (AI-First, Structured, and User-Friendly)
 
+Refactor the Knowledge Studio into a clean, Apple Notes–inspired system with structured AI-generated notes, clear workflows, and excellent readability.
 
-## Plan: Complete History Intelligence AI System
+---
 
-### Audit — What exists vs what's missing
+1. Structured Note System (CRITICAL UPGRADE)
 
-**Already working:** Streaming chat, 5 modes, conversation persistence, chat history sidebar, delete conversations, bookmark toggle on messages, image generation + download, internal/external linking in markdown, auth-gated, dark/light mode.
+When creating a new note:
 
-**Missing from the master prompt:**
+• Automatically insert a structured template:
 
-| # | Feature | Status |
-|---|---------|--------|
-| 1 | Bookmarked answers panel (view all bookmarked AI messages) | Missing |
-| 2 | Save AI response to journal | Missing |
-| 3 | Export chat logs | Missing |
-| 4 | Map Mode (6th AI mode) | Missing |
-| 5 | AI settings panel on the page | Missing |
-| 6 | Timeline-themed immersive background | Missing — plain bg |
-| 7 | Save generated images to journal/bookmarks | Missing — only download |
-| 8 | Search inside bookmarked AI answers | Missing |
-| 9 | Tagging on bookmarked AI answers | Missing |
+Title:
 
-### Implementation
+Headline:
 
-#### 1. Bookmarked Answers Panel
-Add a toggleable right-side panel on the AI page showing all bookmarked `ai_messages` for the user. Include search-within-bookmarks and a tag display. Clicking a bookmarked answer loads its conversation.
+Summary:
 
-#### 2. Save to Journal Button
-Add a "Save to Journal" button on each assistant message (alongside the bookmark button). On click, create a new journal entry with the AI response content, linked to the conversation. Uses existing `journals` table — set `category: "ai-response"` and `linked_event_id` to the message ID.
+Year:
 
-#### 3. Export Chat Logs
-Add an export button in the top bar or sidebar. Generates a `.txt` or `.md` file of the current conversation and triggers a browser download.
+Timeline Period:
 
-#### 4. Map Mode
-Add a 6th mode `"map"` to the `AiMode` type and `MODE_OPTIONS` array. Update the edge function's `SYSTEM_PROMPTS` to include a Map Mode prompt that instructs the AI to describe event locations geographically, mention coordinates, and format location data clearly. (Full interactive map rendering is outside scope — the AI will describe locations textually with geographic context.)
+Subject Category:
 
-#### 5. AI Settings Panel
-Add a collapsible settings panel accessible from a gear icon in the top bar. Settings: default AI mode selection, toggle autosave, font size for responses. Store preferences in `localStorage` (or profile table if preferred).
+Key Points:
 
-#### 6. Timeline-Themed Background
-Add a subtle timeline-themed CSS background to the AI page — a vertical timeline line with faded date markers, or a gradient with historical texture. Purely cosmetic CSS/SVG enhancement.
+Detailed Notes:
 
-#### 7. Save Generated Images to Journal
-Add a "Save to Journal" button on generated images (next to Download). Creates a journal entry with the image embedded as content.
+My Thoughts:
 
-#### 8. Search & Tags on Bookmarked Messages
-Add a `tags` text array column to `ai_messages` table via migration. In the bookmarks panel, allow users to add/remove tags and filter/search bookmarked messages.
+• Store this BOTH:
 
-### Files to create/modify
+  - visually in html_content
 
-- `supabase/functions/history-ai/index.ts` — add Map Mode system prompt
-- `src/hooks/useHistoryAi.ts` — add `exportConversation`, `saveToJournal`, update `AiMode` type with `"map"`
-- `src/pages/HistoryAiPage.tsx` — add bookmarks panel, settings panel, save-to-journal buttons, export button, timeline background, map mode in mode bar
-- `supabase/migrations/` — add `tags` column to `ai_messages`
+  - AND as structured JSON inside a metadata field (or embedded JSON block)
 
-### Database migration
-```sql
-ALTER TABLE public.ai_messages ADD COLUMN tags text[] DEFAULT '{}';
-```
+Example JSON:
 
-### Estimated scope
-~6 focused changes across 3-4 files plus 1 migration. No new pages needed — all features integrate into the existing AI page.
+{
 
+  "title": "",
+
+  "headline": "",
+
+  "summary": "",
+
+  "year": "",
+
+  "timeline": "",
+
+  "category": "",
+
+  "key_points": [],
+
+  "notes": "",
+
+  "thoughts": ""
+
+}
+
+This ensures future filtering, timeline linking, and search works correctly.
+
+---
+
+2. Default User Flow (VERY IMPORTANT)
+
+Define a clear workflow:
+
+When user clicks:
+
+• "+ Quick Note" OR "+"
+
+→ open modal:
+
+User chooses:
+
+• Paste YouTube link
+
+• Enter topic
+
+• Write quick idea
+
+Then:
+
+• Click "Generate with AI"
+
+→ AI generates FULL structured note instantly
+
+→ opens in editor ready to refine
+
+No blank pages by default.
+
+---
+
+3. Apple Notes–Style UI (STRICT RULES)
+
+Apply these exact readability constraints:
+
+• max-width: 720px (centered)
+
+• font-size: 18px base
+
+• line-height: 1.8–2.0
+
+• paragraph spacing: 16–24px
+
+• section spacing: 32–48px
+
+Design:
+
+• soft dark background with slight warm tint  
+
+• minimal toolbar hidden by default  
+
+• clean typography (no clutter)  
+
+• section dividers between each template section  
+
+---
+
+4. SmartEditor Behavior
+
+Default mode:
+
+• NO toolbar visible  
+
+• clean writing area only  
+
+Add:
+
+• “Advanced Mode” toggle → reveals full editor  
+
+• floating “AI Assist” pill button  
+
+• text selection → inline AI menu  
+
+---
+
+5. AI System (FULLY CONTROLLED)
+
+All AI actions must:
+
+• show loading state (spinner or shimmer)  
+
+• NEVER fail silently  
+
+• show error message if failure  
+
+• return preview before applying  
+
+AI actions:
+
+• Fix Grammar  
+
+• Simplify  
+
+• Expand  
+
+• Rewrite  
+
+Preview panel must show:
+
+• before vs after  
+
+• Accept / Reject buttons  
+
+---
+
+6. Generate Note with AI (CORE FEATURE)
+
+Add new action:
+
+generate_structured_note
+
+Input:
+
+• topic OR pasted text OR YouTube URL  
+
+Output (STRICT JSON):
+
+{
+
+  title,
+
+  headline,
+
+  summary,
+
+  year,
+
+  timeline,
+
+  category,
+
+  key_points[],
+
+  detailed_notes,
+
+  thoughts
+
+}
+
+System must:
+
+• parse response
+
+• inject into correct template sections
+
+• update editor instantly
+
+---
+
+7. YouTube AI (STRICT FORMAT)
+
+Add youtube_structured action.
+
+Must return:
+
+• title  
+
+• summary (clear, simple)  
+
+• 5–10 key points  
+
+• estimated year / period  
+
+• category  
+
+• optional timestamps  
+
+DO NOT just embed video.
+
+Flow:
+
+Paste link →
+
+AI processes →
+
+Structured note auto-filled →
+
+Video embed placed at bottom
+
+---
+
+8. Categories System
+
+Predefined categories:
+
+• Ice Age  
+
+• Space  
+
+• Serial Killers  
+
+• Ancient Egypt  
+
+• Ancient Greece  
+
+• Royal Family  
+
+• Dinosaurs  
+
+• Earth History  
+
+• Extinction Events  
+
+• American History  
+
++ allow custom categories
+
+---
+
+9. Quick Capture (PRIMARY FEATURE)
+
+Floating FAB button:
+
+“+ Quick Note”
+
+Popup:
+
+• paste link / topic  
+
+• click "AI Expand"  
+
+• generates FULL structured note  
+
+This should be the main entry point.
+
+---
+
+10. Visual Polish
+
+• larger note cards  
+
+• softer shadows  
+
+• more whitespace  
+
+• readable preview text (2 lines max)  
+
+• category pills with color coding  
+
+---
+
+11. Tooltips & Guidance
+
+Every key button must explain itself:
+
+• AI Assist → “Improve or rewrite your text”  
+
+• Add Source → “Paste YouTube or link”  
+
+• Generate → “Create full structured note using AI”  
+
+---
+
+Goal:
+
+Transform the Knowledge Studio into a simple, beautiful, AI-powered note system where users:
+
+• capture information instantly  
+
+• generate structured notes automatically  
+
+• refine instead of writing from scratch  
+
+• enjoy using it daily
