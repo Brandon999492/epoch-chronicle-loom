@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Bold, Italic, Underline, Heading1, Heading2, List, ListOrdered,
-  Quote, Highlighter, Type, Palette, Image, Youtube, Sparkles,
+  Quote, Highlighter, Type, Palette, Image, Sparkles,
   Check, Wand2, BookOpen, Maximize2, RotateCcw, Loader2, X,
-  ChevronDown, ChevronUp, Link2
+  ChevronDown, ChevronUp, AlignLeft
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,25 +12,23 @@ import { motion, AnimatePresence } from "framer-motion";
 interface SmartEditorProps {
   content: string;
   onChange: (html: string, text: string) => void;
-  onSourceAdd?: (url: string) => void;
 }
 
-const fontSizes = ["12px", "14px", "16px", "18px", "20px", "24px"];
-const textColors = ["#e2e8f0", "#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#fb923c", "#f472b6"];
+const fontSizes = ["14px", "16px", "18px", "20px", "24px"];
+const textColors = ["#e2e8f0", "#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#fb923c"];
 const highlightColors = ["transparent", "#fef08a40", "#bbf7d040", "#bfdbfe40", "#fecaca40", "#e9d5ff40"];
 
-export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps) {
+export function SmartEditor({ content, onChange }: SmartEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showFontSize, setShowFontSize] = useState(false);
   const [showTextColor, setShowTextColor] = useState(false);
   const [showHighlight, setShowHighlight] = useState(false);
-  const [showAi, setShowAi] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiPreview, setAiPreview] = useState<{ original: string; result: string; action: string } | null>(null);
-  const [showSourceInput, setShowSourceInput] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [sourceLoading, setSourceLoading] = useState(false);
+
+  // Floating AI menu on text selection
+  const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number } | null>(null);
 
   const exec = useCallback((cmd: string, value?: string) => {
     document.execCommand(cmd, false, value);
@@ -43,19 +41,37 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
     onChange(editorRef.current.innerHTML, editorRef.current.innerText);
   }, [onChange]);
 
-  const closeAllDropdowns = () => {
-    setShowFontSize(false);
-    setShowTextColor(false);
-    setShowHighlight(false);
-  };
+  // Detect text selection for inline AI menu
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+        setSelectionMenu(null);
+        return;
+      }
+      // Check selection is inside our editor
+      if (!editorRef.current?.contains(sel.anchorNode)) {
+        setSelectionMenu(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const editorRect = editorRef.current!.getBoundingClientRect();
+      setSelectionMenu({
+        x: rect.left + rect.width / 2 - editorRect.left,
+        y: rect.top - editorRect.top - 8,
+      });
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, []);
 
-  // AI actions with preview
   const aiAction = async (action: string) => {
     const sel = window.getSelection();
     const text = sel?.toString() || editorRef.current?.innerText || "";
     if (!text.trim()) { toast.error("Select text or write something first"); return; }
     setAiLoading(true);
-    setShowAi(false);
+    setSelectionMenu(null);
     try {
       const { data, error } = await supabase.functions.invoke("knowledge-ai", { body: { action, text } });
       if (error) throw error;
@@ -70,7 +86,6 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
 
   const acceptAiResult = () => {
     if (!aiPreview || !editorRef.current) return;
-    // Replace entire content with AI result
     editorRef.current.innerText = aiPreview.result;
     syncContent();
     setAiPreview(null);
@@ -82,185 +97,87 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
     toast.info("Changes discarded");
   };
 
-  // YouTube / Source handling
-  const handleAddSource = async () => {
-    if (!sourceUrl.trim()) return;
-    const ytMatch = sourceUrl.match(/(?:youtu\.be\/|v=)([^&?]+)/);
-
-    if (ytMatch) {
-      setSourceLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("knowledge-ai", {
-          body: { action: "youtube_extract", url: sourceUrl }
-        });
-        if (error) throw error;
-        if (data?.error) { toast.error(data.error); return; }
-
-        // Insert structured content
-        const videoId = data.videoId || ytMatch[1];
-        const embedHtml = `
-<div style="margin:16px 0;padding:16px;border-radius:12px;border:1px solid hsl(var(--border));background:hsl(var(--secondary)/0.3)">
-<div style="position:relative;padding-bottom:56.25%;height:0;margin-bottom:12px;border-radius:8px;overflow:hidden">
-<iframe src="https://www.youtube.com/embed/${videoId}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allowfullscreen></iframe>
-</div>
-<div style="font-size:14px;line-height:1.7;color:hsl(var(--foreground))">${data.result.replace(/\n/g, '<br/>')}</div>
-</div>`;
-
-        if (editorRef.current) {
-          editorRef.current.innerHTML += embedHtml;
-          syncContent();
-        }
-        toast.success("YouTube content extracted with AI!");
-      } catch (e: any) {
-        toast.error(e.message || "Failed to process YouTube link");
-      } finally {
-        setSourceLoading(false);
-        setSourceUrl("");
-        setShowSourceInput(false);
-      }
-    } else {
-      // Just add as a link reference
-      if (editorRef.current) {
-        editorRef.current.innerHTML += `<p><a href="${sourceUrl}" target="_blank" style="color:hsl(var(--primary));text-decoration:underline">${sourceUrl}</a></p>`;
-        syncContent();
-      }
-      setSourceUrl("");
-      setShowSourceInput(false);
-      toast.success("Source added");
-    }
-    onSourceAdd?.(sourceUrl);
-  };
-
   const ToolBtn = ({ onClick, active, children, title }: { onClick: () => void; active?: boolean; children: React.ReactNode; title: string }) => (
     <button onClick={onClick} title={title} className={`p-1.5 rounded-md transition-colors ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
       {children}
     </button>
   );
 
+  const aiActions = [
+    { action: "grammar", label: "Fix Grammar", icon: Check },
+    { action: "simplify", label: "Simplify", icon: AlignLeft },
+    { action: "expand", label: "Expand", icon: Maximize2 },
+    { action: "rewrite", label: "Rewrite", icon: RotateCcw },
+  ];
+
   return (
     <div className="flex flex-col h-full">
-      {/* AI Preview Overlay */}
+      {/* AI Preview Panel */}
       <AnimatePresence>
         {aiPreview && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="border-b border-border bg-secondary/50 p-4"
+            className="border-b border-border bg-secondary/30 p-5"
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                AI {aiPreview.action} — Preview
-              </span>
-              <div className="flex items-center gap-2">
-                <button onClick={rejectAiResult} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors">
-                  <X className="h-3 w-3" /> Discard
-                </button>
-                <button onClick={acceptAiResult} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-colors">
-                  <Check className="h-3 w-3" /> Accept
-                </button>
+            <div className="max-w-[720px] mx-auto">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI {aiPreview.action} — Preview
+                </span>
+                <div className="flex items-center gap-2">
+                  <button onClick={rejectAiResult} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                    <X className="h-3 w-3" /> Reject
+                  </button>
+                  <button onClick={acceptAiResult} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-colors">
+                    <Check className="h-3 w-3" /> Accept
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="max-h-48 overflow-y-auto text-sm leading-relaxed text-foreground bg-card rounded-lg p-3 border border-border">
-              {aiPreview.result}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">Before</p>
+                  <div className="text-sm leading-relaxed text-muted-foreground bg-card rounded-lg p-3 border border-border max-h-40 overflow-y-auto">
+                    {aiPreview.original.slice(0, 500)}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-primary font-medium mb-1.5">After</p>
+                  <div className="text-sm leading-relaxed text-foreground bg-card rounded-lg p-3 border border-primary/30 max-h-40 overflow-y-auto">
+                    {aiPreview.result.slice(0, 500)}
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Simple Toolbar */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-border bg-card/50 sticky top-0 z-10">
-        {/* Core actions always visible */}
-        <div className="relative">
+      {/* Minimal Top Bar */}
+      <div className="flex items-center gap-2 px-5 py-2 border-b border-border/50 bg-card/30">
+        {/* Floating AI Assist pill */}
+        <div className="relative group">
           <button
-            onClick={() => setShowSourceInput(!showSourceInput)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
-          >
-            <Link2 className="h-3.5 w-3.5" /> Add Source
-          </button>
-          <AnimatePresence>
-            {showSourceInput && (
-              <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                className="absolute top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-xl p-3 z-30 w-80"
-              >
-                <p className="text-[10px] text-muted-foreground font-medium uppercase mb-2">Paste YouTube link or URL</p>
-                <div className="flex gap-2">
-                  <input
-                    value={sourceUrl}
-                    onChange={(e) => setSourceUrl(e.target.value)}
-                    placeholder="https://youtube.com/watch?v=..."
-                    className="flex-1 text-xs rounded-lg bg-secondary border border-border px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                    autoFocus
-                    onKeyDown={(e) => e.key === "Enter" && handleAddSource()}
-                  />
-                  <button
-                    onClick={handleAddSource}
-                    disabled={sourceLoading || !sourceUrl.trim()}
-                    className="px-3 py-2 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all"
-                  >
-                    {sourceLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
-                  </button>
-                </div>
-                {sourceUrl.match(/youtu/) && (
-                  <p className="text-[10px] text-primary mt-1.5 flex items-center gap-1">
-                    <Youtube className="h-3 w-3" /> YouTube detected — AI will extract key points
-                  </p>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* AI Assist */}
-        <div className="relative">
-          <button
-            onClick={() => { setShowAi(!showAi); closeAllDropdowns(); }}
             disabled={aiLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+            onClick={() => aiAction("improve")}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+            title="AI Assist – improves your writing"
           >
             {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
             AI Assist
           </button>
-          <AnimatePresence>
-            {showAi && (
-              <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                className="absolute top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-xl p-1.5 z-30 w-52"
-              >
-                <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">AI Writing Assistant</p>
-                {[
-                  { action: "improve", label: "Improve Writing", icon: Wand2, desc: "Enhance clarity & flow" },
-                  { action: "grammar", label: "Fix Grammar", icon: Check, desc: "Correct errors" },
-                  { action: "summarize", label: "Summarize", icon: BookOpen, desc: "Create a summary" },
-                  { action: "expand", label: "Expand Ideas", icon: Maximize2, desc: "Add more detail" },
-                  { action: "rewrite", label: "Rewrite", icon: RotateCcw, desc: "Fresh perspective" },
-                ].map(({ action, label, icon: Icon, desc }) => (
-                  <button key={action} onClick={() => aiAction(action)} disabled={aiLoading}
-                    className="flex items-center gap-2.5 w-full px-2.5 py-2 text-left hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 group">
-                    <Icon className="h-4 w-4 text-primary shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{label}</p>
-                      <p className="text-[10px] text-muted-foreground">{desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Improves your writing
+          </span>
         </div>
 
         <div className="flex-1" />
 
-        {/* Advanced Editor toggle */}
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-1 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors rounded-md"
+          className="flex items-center gap-1 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-md"
         >
           {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           {showAdvanced ? "Simple" : "Advanced"}
@@ -274,9 +191,9 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-b border-border bg-card/30"
+            className="overflow-hidden border-b border-border/50 bg-card/20"
           >
-            <div className="flex items-center gap-0.5 flex-wrap px-4 py-2">
+            <div className="flex items-center gap-0.5 flex-wrap px-5 py-2">
               <ToolBtn onClick={() => exec("bold")} title="Bold"><Bold className="h-3.5 w-3.5" /></ToolBtn>
               <ToolBtn onClick={() => exec("italic")} title="Italic"><Italic className="h-3.5 w-3.5" /></ToolBtn>
               <ToolBtn onClick={() => exec("underline")} title="Underline"><Underline className="h-3.5 w-3.5" /></ToolBtn>
@@ -288,8 +205,6 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
               <ToolBtn onClick={() => exec("insertOrderedList")} title="Numbered List"><ListOrdered className="h-3.5 w-3.5" /></ToolBtn>
               <ToolBtn onClick={() => exec("formatBlock", "blockquote")} title="Quote"><Quote className="h-3.5 w-3.5" /></ToolBtn>
               <div className="w-px h-5 bg-border mx-1" />
-
-              {/* Font Size */}
               <div className="relative">
                 <ToolBtn onClick={() => { setShowFontSize(!showFontSize); setShowTextColor(false); setShowHighlight(false); }} title="Font Size"><Type className="h-3.5 w-3.5" /></ToolBtn>
                 {showFontSize && (
@@ -301,8 +216,6 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
                   </div>
                 )}
               </div>
-
-              {/* Text Color */}
               <div className="relative">
                 <ToolBtn onClick={() => { setShowTextColor(!showTextColor); setShowFontSize(false); setShowHighlight(false); }} title="Text Color"><Palette className="h-3.5 w-3.5" /></ToolBtn>
                 {showTextColor && (
@@ -314,8 +227,6 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
                   </div>
                 )}
               </div>
-
-              {/* Highlight */}
               <div className="relative">
                 <ToolBtn onClick={() => { setShowHighlight(!showHighlight); setShowFontSize(false); setShowTextColor(false); }} title="Highlight"><Highlighter className="h-3.5 w-3.5" /></ToolBtn>
                 {showHighlight && (
@@ -327,39 +238,82 @@ export function SmartEditor({ content, onChange, onSourceAdd }: SmartEditorProps
                   </div>
                 )}
               </div>
-
               <div className="w-px h-5 bg-border mx-1" />
-              <ToolBtn onClick={() => { const url = prompt("Image URL:"); if (url) exec("insertHTML", `<img src="${url}" style="max-width:100%;border-radius:8px;margin:8px 0;" />`); }} title="Insert Image"><Image className="h-3.5 w-3.5" /></ToolBtn>
+              <ToolBtn onClick={() => { const u = prompt("Image URL:"); if (u) exec("insertHTML", `<img src="${u}" style="max-width:100%;border-radius:8px;margin:8px 0;" />`); }} title="Insert Image"><Image className="h-3.5 w-3.5" /></ToolBtn>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Editable Area */}
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={syncContent}
-        onBlur={syncContent}
-        dangerouslySetInnerHTML={{ __html: content }}
-        className="flex-1 overflow-y-auto px-6 py-8 outline-none text-base leading-[1.8] min-h-[300px] [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5 [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-4 [&_img]:rounded-lg [&_img]:max-w-full [&_img]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:mb-1 [&_p]:mb-3 [&_a]:text-primary [&_a]:underline"
-        data-placeholder="Start writing your notes..."
-      />
+      {/* Editor Area — Apple Notes Style */}
+      <div className="flex-1 overflow-y-auto relative">
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={syncContent}
+          onBlur={syncContent}
+          dangerouslySetInnerHTML={{ __html: content }}
+          className="max-w-[720px] mx-auto px-6 py-8 outline-none min-h-[400px]
+            text-[17px] leading-[2.0]
+            [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-8 [&_h1]:text-foreground
+            [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-foreground
+            [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:text-primary
+            [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-5
+            [&_img]:rounded-lg [&_img]:max-w-full [&_img]:my-5
+            [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-4 [&_ul]:space-y-1
+            [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-4 [&_ol]:space-y-1
+            [&_li]:mb-1.5 [&_li]:leading-relaxed
+            [&_p]:mb-4
+            [&_a]:text-primary [&_a]:underline
+            [&_hr]:border-border/50 [&_hr]:my-8
+            [&_.section-label]:text-xs [&_.section-label]:uppercase [&_.section-label]:tracking-widest [&_.section-label]:text-primary/60 [&_.section-label]:font-semibold [&_.section-label]:mt-8 [&_.section-label]:mb-2
+            empty:[&_div]:before:content-[attr(data-placeholder)] empty:[&_div]:before:text-muted-foreground/40"
+          data-placeholder="Start writing your notes..."
+        />
+
+        {/* Floating Inline AI Menu on text selection */}
+        <AnimatePresence>
+          {selectionMenu && !aiLoading && !aiPreview && (
+            <motion.div
+              initial={{ opacity: 0, y: 4, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.95 }}
+              className="absolute z-50 flex items-center gap-0.5 bg-card border border-border rounded-xl shadow-xl px-1.5 py-1"
+              style={{ left: selectionMenu.x, top: selectionMenu.y, transform: "translate(-50%, -100%)" }}
+            >
+              {aiActions.map(({ action, label, icon: Icon }) => (
+                <button
+                  key={action}
+                  onClick={() => aiAction(action)}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
+                  title={label}
+                >
+                  <Icon className="h-3 w-3" /> {label}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Loading overlay */}
       <AnimatePresence>
-        {(aiLoading || sourceLoading) && (
+        {aiLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-background/50 flex items-center justify-center z-40 pointer-events-none"
+            className="absolute inset-0 bg-background/40 backdrop-blur-sm flex items-center justify-center z-40"
           >
-            <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3 shadow-lg">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span className="text-sm text-foreground">{sourceLoading ? "Extracting content with AI..." : "AI is thinking..."}</span>
-            </div>
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="flex items-center gap-3 bg-card border border-border rounded-xl px-5 py-3 shadow-lg"
+            >
+              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+              <span className="text-sm text-foreground">AI is thinking…</span>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

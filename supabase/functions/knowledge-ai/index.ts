@@ -16,69 +16,175 @@ serve(async (req) => {
     const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
     const aiHeaders = { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" };
 
-    // YouTube AI extraction
+    const callAI = async (systemPrompt: string, userPrompt: string, tools?: any[], toolChoice?: any) => {
+      const body: any = {
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      };
+      if (tools) { body.tools = tools; body.tool_choice = toolChoice; }
+
+      const resp = await fetch(AI_URL, { method: "POST", headers: aiHeaders, body: JSON.stringify(body) });
+      if (!resp.ok) {
+        const status = resp.status;
+        if (status === 429) return { error: "Rate limited, try again shortly.", status: 429 };
+        if (status === 402) return { error: "AI credits exhausted.", status: 402 };
+        throw new Error(`AI gateway error: ${status}`);
+      }
+      return await resp.json();
+    };
+
+    // ─── Generate Structured Note ───
+    if (action === "generate_structured_note") {
+      const input = text?.trim() || url?.trim();
+      if (!input) {
+        return new Response(JSON.stringify({ error: "Provide a topic, text, or URL" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const isYoutube = input.match(/(?:youtu\.be\/|v=)([^&?]+)/);
+      const userPrompt = isYoutube
+        ? `Analyze this YouTube video URL and generate a structured knowledge note: ${input}`
+        : `Generate a structured knowledge note about: ${input}`;
+
+      const tools = [{
+        type: "function",
+        function: {
+          name: "create_structured_note",
+          description: "Create a structured knowledge note with all required fields filled in.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Clear, concise title" },
+              headline: { type: "string", description: "One-line engaging headline" },
+              summary: { type: "string", description: "2-3 sentence summary" },
+              year: { type: "string", description: "Relevant year or date range, e.g. '1969' or '65 million years ago'" },
+              timeline_period: { type: "string", description: "Historical period, e.g. 'Modern Era', 'Mesozoic', 'Ancient'" },
+              category: { type: "string", description: "Best matching category from: Ice Age, Space, Serial Killers, Ancient Egypt, Ancient Greece, Royal Family, Dinosaurs, Earth History, Extinction Events, American History, or a custom one" },
+              key_points: { type: "array", items: { type: "string" }, description: "5-8 key points or facts" },
+              detailed_notes: { type: "string", description: "Detailed educational content, 3-5 paragraphs" },
+              thoughts: { type: "string", description: "Suggested reflection questions or areas for further study" },
+            },
+            required: ["title", "headline", "summary", "year", "timeline_period", "category", "key_points", "detailed_notes", "thoughts"],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const data = await callAI(
+        "You are a knowledge research assistant. Generate comprehensive, educational structured notes. Be factual, clear, and engaging. Always fill every field thoroughly.",
+        userPrompt,
+        tools,
+        { type: "function", function: { name: "create_structured_note" } }
+      );
+
+      if (data.error) {
+        return new Response(JSON.stringify({ error: data.error }), {
+          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) throw new Error("AI did not return structured data");
+
+      let structured;
+      try { structured = JSON.parse(toolCall.function.arguments); } catch { throw new Error("Failed to parse AI response"); }
+
+      const videoId = isYoutube ? isYoutube[1] : null;
+      return new Response(JSON.stringify({ structured, videoId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── YouTube Structured Extraction ───
+    if (action === "youtube_structured") {
+      if (!url) {
+        return new Response(JSON.stringify({ error: "URL is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const match = url.match(/(?:youtu\.be\/|v=)([^&?]+)/);
+      const videoId = match ? match[1] : null;
+
+      const tools = [{
+        type: "function",
+        function: {
+          name: "extract_youtube_note",
+          description: "Extract structured knowledge from a YouTube video.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              headline: { type: "string" },
+              summary: { type: "string" },
+              year: { type: "string" },
+              timeline_period: { type: "string" },
+              category: { type: "string" },
+              key_points: { type: "array", items: { type: "string" } },
+              detailed_notes: { type: "string" },
+              thoughts: { type: "string" },
+            },
+            required: ["title", "headline", "summary", "year", "timeline_period", "category", "key_points", "detailed_notes", "thoughts"],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const data = await callAI(
+        "You are a knowledge extraction assistant. Analyze YouTube videos and extract structured educational content. Be thorough and educational.",
+        `Analyze this YouTube video and extract structured knowledge:\nURL: ${url}\n${videoId ? `Video ID: ${videoId}` : ""}\n\nProvide comprehensive educational content based on what this video likely covers.`,
+        tools,
+        { type: "function", function: { name: "extract_youtube_note" } }
+      );
+
+      if (data.error) {
+        return new Response(JSON.stringify({ error: data.error }), {
+          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) throw new Error("AI did not return structured data");
+
+      let structured;
+      try { structured = JSON.parse(toolCall.function.arguments); } catch { throw new Error("Failed to parse AI response"); }
+
+      return new Response(JSON.stringify({ structured, videoId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Legacy YouTube extract (keep for backward compat) ───
     if (action === "youtube_extract") {
       if (!url) {
         return new Response(JSON.stringify({ error: "URL is required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
       const match = url.match(/(?:youtu\.be\/|v=)([^&?]+)/);
       const videoId = match ? match[1] : null;
 
-      const prompt = `You are given a YouTube video URL: ${url}
-${videoId ? `Video ID: ${videoId}` : ""}
+      const data = await callAI(
+        "You are a knowledge extraction assistant. Analyze YouTube videos and extract structured educational content.",
+        `Analyze this YouTube video URL: ${url}\n${videoId ? `Video ID: ${videoId}` : ""}\n\nProvide:\n## Summary\n## Key Points\n## Important Takeaways\n## My Notes`,
+      );
 
-Based on the URL and video ID, provide a comprehensive analysis in exactly this format:
-
-## Summary
-Write a 2-3 sentence summary of what this video likely covers based on the URL context.
-
-## Key Points
-- Point 1
-- Point 2
-- Point 3
-- Point 4
-- Point 5
-
-## Important Takeaways
-1. First key takeaway
-2. Second key takeaway
-3. Third key takeaway
-
-## My Notes
-[Space for personal notes]
-
-Be informative and educational. If you can identify the video topic from the URL, provide relevant historical/educational context.`;
-
-      const resp = await fetch(AI_URL, {
-        method: "POST",
-        headers: aiHeaders,
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: "You are a knowledge extraction assistant. Analyze YouTube videos and extract structured educational content. Always provide useful, educational summaries even from limited URL information." },
-            { role: "user", content: prompt },
-          ],
-        }),
-      });
-
-      if (!resp.ok) {
-        const status = resp.status;
-        if (status === 429) return new Response(JSON.stringify({ error: "Rate limited, try again shortly." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        if (status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        throw new Error(`AI gateway error: ${status}`);
+      if (data.error) {
+        return new Response(JSON.stringify({ error: data.error }), {
+          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      const data = await resp.json();
       const result = data.choices?.[0]?.message?.content || "";
       return new Response(JSON.stringify({ result, videoId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // AI expand from quick capture
+    // ─── Expand Note ───
     if (action === "expand_note") {
       if (!text?.trim()) {
         return new Response(JSON.stringify({ error: "Text is required" }), {
@@ -86,33 +192,24 @@ Be informative and educational. If you can identify the video topic from the URL
         });
       }
 
-      const resp = await fetch(AI_URL, {
-        method: "POST",
-        headers: aiHeaders,
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: "You are a knowledge assistant. Take a brief note or idea and expand it into a well-structured, educational note with sections: Summary, Key Points, and Details. Use markdown formatting." },
-            { role: "user", content: `Expand this note into a comprehensive, well-structured document:\n\n${text}` },
-          ],
-        }),
-      });
+      const data = await callAI(
+        "You are a knowledge assistant. Take a brief note or idea and expand it into a well-structured, educational note with sections: Summary, Key Points, and Details. Use markdown formatting.",
+        `Expand this note into a comprehensive, well-structured document:\n\n${text}`,
+      );
 
-      if (!resp.ok) {
-        const status = resp.status;
-        if (status === 429) return new Response(JSON.stringify({ error: "Rate limited, try again shortly." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        if (status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        throw new Error(`AI gateway error: ${status}`);
+      if (data.error) {
+        return new Response(JSON.stringify({ error: data.error }), {
+          status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      const data = await resp.json();
       const result = data.choices?.[0]?.message?.content || "";
       return new Response(JSON.stringify({ result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Standard text AI actions
+    // ─── Standard Text AI Actions ───
     if (!text?.trim()) {
       return new Response(JSON.stringify({ error: "Select text or write something first" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -125,6 +222,7 @@ Be informative and educational. If you can identify the video topic from the URL
       summarize: "Summarize this text in a concise paragraph. Return ONLY the summary.",
       expand: "Expand on the ideas in this text with more detail and context. Return ONLY the expanded text.",
       rewrite: "Rewrite this text in a more engaging, polished style. Return ONLY the rewritten text.",
+      simplify: "Simplify this text to make it easier to understand. Use shorter sentences and simpler words. Return ONLY the simplified text.",
     };
 
     const systemPrompt = prompts[action];
@@ -134,26 +232,14 @@ Be informative and educational. If you can identify the video topic from the URL
       });
     }
 
-    const resp = await fetch(AI_URL, {
-      method: "POST",
-      headers: aiHeaders,
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ],
-      }),
-    });
+    const data = await callAI(systemPrompt, text);
 
-    if (!resp.ok) {
-      const status = resp.status;
-      if (status === 429) return new Response(JSON.stringify({ error: "Rate limited, try again shortly." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI gateway error: ${status}`);
+    if (data.error) {
+      return new Response(JSON.stringify({ error: data.error }), {
+        status: data.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const data = await resp.json();
     const result = data.choices?.[0]?.message?.content || "";
     return new Response(JSON.stringify({ result }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

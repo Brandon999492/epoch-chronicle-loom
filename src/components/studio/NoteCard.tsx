@@ -1,24 +1,18 @@
 import { Pin, Heart, Calendar, Tag } from "lucide-react";
 import { motion } from "framer-motion";
 
-const themeColors: Record<string, string> = {
-  default: "border-border",
-  red: "border-red-400/50",
-  blue: "border-blue-400/50",
-  green: "border-green-400/50",
-  purple: "border-purple-400/50",
-  amber: "border-amber-400/50",
-  rose: "border-rose-400/50",
-};
-
-const themeBg: Record<string, string> = {
-  default: "",
-  red: "bg-red-500/5",
-  blue: "bg-blue-500/5",
-  green: "bg-green-500/5",
-  purple: "bg-purple-500/5",
-  amber: "bg-amber-500/5",
-  rose: "bg-rose-500/5",
+const categoryColors: Record<string, string> = {
+  "Ice Age": "bg-blue-500/15 text-blue-400",
+  "Space": "bg-violet-500/15 text-violet-400",
+  "Serial Killers": "bg-red-500/15 text-red-400",
+  "Ancient Egypt": "bg-amber-500/15 text-amber-400",
+  "Ancient Greece": "bg-emerald-500/15 text-emerald-400",
+  "Royal Family": "bg-purple-500/15 text-purple-400",
+  "Dinosaurs": "bg-green-500/15 text-green-400",
+  "Earth History": "bg-teal-500/15 text-teal-400",
+  "Extinction Events": "bg-orange-500/15 text-orange-400",
+  "American History": "bg-sky-500/15 text-sky-400",
+  general: "bg-muted text-muted-foreground",
 };
 
 interface NoteCardProps {
@@ -40,42 +34,51 @@ interface NoteCardProps {
 }
 
 export function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
-  const theme = note.color_theme || "default";
-  const preview = (note.content || "").slice(0, 120);
+  const preview = (note.content || "").replace(/[#*_\->/\\]/g, "").slice(0, 100);
+  const cat = note.category || "general";
+  const catStyle = categoryColors[cat] || categoryColors.general;
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={onClick}
-      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${themeColors[theme] || themeColors.default} ${themeBg[theme] || ""} ${isSelected ? "ring-2 ring-primary shadow-lg" : "hover:border-primary/30"}`}
+      className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 hover:shadow-md
+        ${isSelected
+          ? "border-primary/40 bg-primary/5 shadow-lg ring-1 ring-primary/20"
+          : "border-border/60 bg-card hover:border-primary/20 hover:bg-card/80"
+        }`}
     >
-      <div className="flex items-start justify-between mb-2">
-        <h3 className="font-display font-semibold text-sm text-foreground truncate flex-1">{note.title}</h3>
+      <div className="flex items-start justify-between mb-2.5">
+        <h3 className="font-semibold text-[15px] text-foreground truncate flex-1 leading-snug">{note.title}</h3>
         <div className="flex items-center gap-1 ml-2 shrink-0">
           {note.is_pinned && <Pin className="h-3 w-3 text-primary" />}
           {note.is_favorite && <Heart className="h-3 w-3 text-primary fill-primary" />}
         </div>
       </div>
+
       {preview && (
-        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{preview}</p>
+        <p className="text-[13px] text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{preview}</p>
       )}
-      <div className="flex items-center gap-2 flex-wrap">
-        {note.category && note.category !== "general" && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium capitalize">{note.category}</span>
+
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {cat !== "general" && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${catStyle}`}>
+            {cat}
+          </span>
         )}
         {note.linked_year && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground flex items-center gap-0.5">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground flex items-center gap-0.5">
             <Calendar className="h-2.5 w-2.5" />{note.linked_year}
           </span>
         )}
         {(note.tags || []).slice(0, 2).map((t) => (
-          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground flex items-center gap-0.5">
+          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground flex items-center gap-0.5">
             <Tag className="h-2.5 w-2.5" />{t}
           </span>
         ))}
-        <span className="text-[10px] text-muted-foreground ml-auto">{note.word_count || 0}w</span>
+        <span className="text-[10px] text-muted-foreground/60 ml-auto">{note.word_count || 0}w</span>
       </div>
     </motion.div>
   );
