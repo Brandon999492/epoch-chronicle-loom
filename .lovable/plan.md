@@ -1,327 +1,221 @@
-Apple Notes-Style Knowledge Studio Refactor (AI-First, Structured, and User-Friendly)
+Refine and upgrade the Knowledge Studio into a polished, Apple Notes–style, AI-powered personal learning system with strong usability, clarity, and mobile-first design.
 
-Refactor the Knowledge Studio into a clean, Apple Notes–inspired system with structured AI-generated notes, clear workflows, and excellent readability.
+This is not just a text editor — it must feel like a structured learning tool.
 
----
+----------------------------------
 
-1. Structured Note System (CRITICAL UPGRADE)
+CORE IMPROVEMENTS
 
-When creating a new note:
+----------------------------------
 
-• Automatically insert a structured template:
+1. MOBILE-FIRST RESPONSIVENESS
 
-Title:
+• Fix all layout issues on iPhone screens
 
-Headline:
+• Stack editor header elements vertically
 
-Summary:
+• Move overflow buttons into dropdown menus
 
-Year:
+• Ensure all UI elements have minimum 44px tap targets
 
-Timeline Period:
+• Prevent any overlapping text or hidden elements
 
-Subject Category:
+• Fix color picker and dropdowns using z-50 and viewport detection
 
-Key Points:
+----------------------------------
 
-Detailed Notes:
+2. STRUCTURED NOTE SYSTEM (NOT WORD-LIKE)
 
-My Thoughts:
+• Replace free-form editing with structured sections:
 
-• Store this BOTH:
+  - Title
 
-  - visually in html_content
+  - Headline
 
-  - AND as structured JSON inside a metadata field (or embedded JSON block)
+  - Summary
 
-Example JSON:
+  - Year
 
-{
+  - Timeline Period
 
-  "title": "",
+  - Category
 
-  "headline": "",
+  - Key Points
 
-  "summary": "",
+  - Detailed Notes
 
-  "year": "",
+  - My Thoughts
 
-  "timeline": "",
+• Each section should behave like a separate editable block (Notion-style)
 
-  "category": "",
+• Add placeholders inside each section
 
-  "key_points": [],
+• Add subtle dividers between sections
 
-  "notes": "",
+• Prevent the editor from feeling like one large text wall
 
-  "thoughts": ""
+----------------------------------
 
-}
+3. AI ASSISTANT (CONTROLLED & TRANSPARENT)
 
-This ensures future filtering, timeline linking, and search works correctly.
+AI must NEVER auto-run blindly.
 
----
+Always show a clear action menu with:
 
-2. Default User Flow (VERY IMPORTANT)
+• Fix Grammar
 
-Define a clear workflow:
+• Simplify
 
-When user clicks:
+• Expand
 
-• "+ Quick Note" OR "+"
+• Summarize
 
-→ open modal:
+• Rewrite (Formal / Casual / Academic)
 
-User chooses:
+• Extract Key Points
 
-• Paste YouTube link
+• Convert to Timeline
 
-• Enter topic
+• Generate Full Structured Note
 
-• Write quick idea
+• Show preview BEFORE applying changes
+
+• Allow Accept / Reject
+
+• If text is selected → only modify selection
+
+• If no selection → modify entire document
+
+----------------------------------
+
+4. YOUTUBE AI UPGRADE
+
+When a YouTube link is added:
+
+Automatically:
+
+• Extract topic
+
+• Generate structured summary
+
+• Create key bullet points
+
+• Detect timeline references (years/events)
+
+• Suggest category
 
 Then:
 
-• Click "Generate with AI"
+• Fill structured note sections
 
-→ AI generates FULL structured note instantly
+• Embed video cleanly in a styled container
 
-→ opens in editor ready to refine
+• Link to relevant historical events if possible
 
-No blank pages by default.
+----------------------------------
 
----
+5. VOICE SYSTEM (FREE + FUTURE READY)
 
-3. Apple Notes–Style UI (STRICT RULES)
+Speech-to-Text:
 
-Apply these exact readability constraints:
+• Use Web Speech API
 
-• max-width: 720px (centered)
+• Real-time transcription into editor
 
-• font-size: 18px base
+• Insert text at cursor
 
-• line-height: 1.8–2.0
+• Show recording indicator
 
-• paragraph spacing: 16–24px
+Text-to-Speech:
 
-• section spacing: 32–48px
+• Use speechSynthesis API
 
-Design:
+• Play selected text or full note
 
-• soft dark background with slight warm tint  
+• Voice selector dropdown
 
-• minimal toolbar hidden by default  
+• Speed control (0.5x–2x)
 
-• clean typography (no clutter)  
+• Stop button
 
-• section dividers between each template section  
+• Prepare system for future premium AI voice upgrade
 
----
+----------------------------------
 
-4. SmartEditor Behavior
+6. STUDIO SETTINGS PANEL
 
-Default mode:
+Create slide-out settings panel with:
 
-• NO toolbar visible  
+• Font size (Small / Medium / Large)
 
-• clean writing area only  
+• Reading width (600px / 720px / 900px)
+
+• Editor mode default (Simple / Advanced)
+
+• Animation toggle
+
+• Focus mode toggle (hide UI distractions)
+
+Save in localStorage per user
+
+----------------------------------
+
+7. MEDIA HANDLING FIX
+
+• Images must be contained, centered, and styled
+
+• Videos must use responsive aspect-ratio containers
+
+• Prevent media from breaking layout
+
+• Add spacing around media
+
+----------------------------------
+
+8. QUICK CAPTURE IMPROVEMENT
+
+• Replace input with auto-resizing textarea
+
+• Add "Generate Detailed Note" toggle
+
+• Allow longer input
+
+• Output fully structured notes (not plain text)
+
+----------------------------------
+
+9. UI/UX POLISH (APPLE NOTES STYLE)
+
+• Softer background colors
+
+• More whitespace
+
+• Smooth animations (fade, slide)
+
+• Clean typography
+
+• Minimal UI clutter
+
+• Focus on readability and calm design
+
+----------------------------------
+
+10. LEARNING EXPERIENCE LAYER
 
 Add:
 
-• “Advanced Mode” toggle → reveals full editor  
+• Daily learning tracker
 
-• floating “AI Assist” pill button  
+• Weekly goals
 
-• text selection → inline AI menu  
+• Subject progress tracking
 
----
+• “You learned today” summary
 
-5. AI System (FULLY CONTROLLED)
+• Streak system
 
-All AI actions must:
+----------------------------------
 
-• show loading state (spinner or shimmer)  
+DO NOT break existing database or API structure.
 
-• NEVER fail silently  
-
-• show error message if failure  
-
-• return preview before applying  
-
-AI actions:
-
-• Fix Grammar  
-
-• Simplify  
-
-• Expand  
-
-• Rewrite  
-
-Preview panel must show:
-
-• before vs after  
-
-• Accept / Reject buttons  
-
----
-
-6. Generate Note with AI (CORE FEATURE)
-
-Add new action:
-
-generate_structured_note
-
-Input:
-
-• topic OR pasted text OR YouTube URL  
-
-Output (STRICT JSON):
-
-{
-
-  title,
-
-  headline,
-
-  summary,
-
-  year,
-
-  timeline,
-
-  category,
-
-  key_points[],
-
-  detailed_notes,
-
-  thoughts
-
-}
-
-System must:
-
-• parse response
-
-• inject into correct template sections
-
-• update editor instantly
-
----
-
-7. YouTube AI (STRICT FORMAT)
-
-Add youtube_structured action.
-
-Must return:
-
-• title  
-
-• summary (clear, simple)  
-
-• 5–10 key points  
-
-• estimated year / period  
-
-• category  
-
-• optional timestamps  
-
-DO NOT just embed video.
-
-Flow:
-
-Paste link →
-
-AI processes →
-
-Structured note auto-filled →
-
-Video embed placed at bottom
-
----
-
-8. Categories System
-
-Predefined categories:
-
-• Ice Age  
-
-• Space  
-
-• Serial Killers  
-
-• Ancient Egypt  
-
-• Ancient Greece  
-
-• Royal Family  
-
-• Dinosaurs  
-
-• Earth History  
-
-• Extinction Events  
-
-• American History  
-
-+ allow custom categories
-
----
-
-9. Quick Capture (PRIMARY FEATURE)
-
-Floating FAB button:
-
-“+ Quick Note”
-
-Popup:
-
-• paste link / topic  
-
-• click "AI Expand"  
-
-• generates FULL structured note  
-
-This should be the main entry point.
-
----
-
-10. Visual Polish
-
-• larger note cards  
-
-• softer shadows  
-
-• more whitespace  
-
-• readable preview text (2 lines max)  
-
-• category pills with color coding  
-
----
-
-11. Tooltips & Guidance
-
-Every key button must explain itself:
-
-• AI Assist → “Improve or rewrite your text”  
-
-• Add Source → “Paste YouTube or link”  
-
-• Generate → “Create full structured note using AI”  
-
----
-
-Goal:
-
-Transform the Knowledge Studio into a simple, beautiful, AI-powered note system where users:
-
-• capture information instantly  
-
-• generate structured notes automatically  
-
-• refine instead of writing from scratch  
-
-• enjoy using it daily
+All improvements must integrate with current Knowledge Studio system.
