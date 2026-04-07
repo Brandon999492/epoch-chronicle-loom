@@ -14,6 +14,7 @@ const navItems = [
   { label: "Knowledge Graph", path: "/knowledge-graph" },
   { label: "Royals", path: "/royals" },
   { label: "History AI", path: "/history-ai" },
+  { label: "Learn", path: "/learn" },
   { label: "Video Studio", path: "/video-studio" },
 ];
 

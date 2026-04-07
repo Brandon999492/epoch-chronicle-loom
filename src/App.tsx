@@ -77,6 +77,7 @@ const App = () => (
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/category/:categoryId" element={<CategoryPage />} />
             <Route path="/map" element={<Suspense fallback={<div className="min-h-screen bg-background" />}><HistoryMapPage /></Suspense>} />
+            <Route path="/learn" element={<LearnPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
