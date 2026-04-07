@@ -3,10 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/studio/NoteCard";
-import { RichEditor } from "@/components/studio/RichEditor";
+import { SmartEditor } from "@/components/studio/SmartEditor";
 import { QuickCapture } from "@/components/studio/QuickCapture";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Pin, Heart, Trash2, Tag, Calendar, Palette, Filter, BookOpen, ArrowLeft, X } from "lucide-react";
+import { Plus, Search, Pin, Heart, Trash2, Filter, BookOpen, ArrowLeft, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -55,17 +55,25 @@ const KnowledgeStudioPage = () => {
 
   useEffect(() => { fetchNotes(); }, [fetchNotes]);
 
-  const createNote = async (quickTitle?: string, quickContent?: string) => {
+  const createNote = async (quickTitle?: string, quickContent?: string, quickHtml?: string) => {
     if (!user) return;
     const { data, error } = await supabase
       .from("knowledge_notes")
-      .insert({ user_id: user.id, title: quickTitle || "Untitled Note", content: quickContent || "", html_content: quickContent ? `<p>${quickContent}</p>` : "" })
+      .insert({
+        user_id: user.id,
+        title: quickTitle || "Untitled Note",
+        content: quickContent || "",
+        html_content: quickHtml || quickContent ? `<p>${quickContent}</p>` : "",
+      })
       .select()
       .single();
     if (data) {
       setNotes((prev) => [data as KNote, ...prev]);
       if (!quickTitle) selectNote(data as KNote);
-      else toast.success("Note captured!");
+      else {
+        selectNote(data as KNote);
+        toast.success("Note created!");
+      }
     }
     if (error) toast.error("Failed to create note");
   };
@@ -105,7 +113,7 @@ const KnowledgeStudioPage = () => {
   const toggleFav = async (n: KNote) => { await supabase.from("knowledge_notes").update({ is_favorite: !n.is_favorite }).eq("id", n.id); fetchNotes(); };
   const deleteNote = async (n: KNote) => {
     await supabase.from("knowledge_notes").delete().eq("id", n.id);
-    if (selected?.id === n.id) { setSelected(null); }
+    if (selected?.id === n.id) setSelected(null);
     fetchNotes();
     toast.success("Note deleted");
   };
@@ -129,11 +137,11 @@ const KnowledgeStudioPage = () => {
         <div className={`w-80 border-r border-border bg-card flex flex-col shrink-0 ${selected ? "hidden lg:flex" : "flex"}`}>
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />Studio
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" /> Studio
               </h2>
               <div className="flex items-center gap-1">
-                <QuickCapture onSave={(t, c) => createNote(t, c)} />
+                <QuickCapture onSave={(t, c, h) => createNote(t, c, h)} />
                 <button onClick={() => createNote()} className="p-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-colors">
                   <Plus className="h-4 w-4" />
                 </button>
@@ -161,7 +169,11 @@ const KnowledgeStudioPage = () => {
               ))}
             </AnimatePresence>
             {filtered.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-8">No notes yet — create one!</p>
+              <div className="text-center py-12">
+                <BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-muted-foreground">No notes yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Create one to get started</p>
+              </div>
             )}
           </div>
 
@@ -175,16 +187,16 @@ const KnowledgeStudioPage = () => {
           {selected ? (
             <>
               {/* Editor Header */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50 gap-2">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-card/50 gap-2">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <button onClick={() => setSelected(null)} className="lg:hidden p-1 text-muted-foreground hover:text-foreground">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title..."
-                    className="text-lg font-display font-bold text-foreground bg-transparent border-none outline-none flex-1 min-w-0" />
+                    className="text-xl font-bold text-foreground bg-transparent border-none outline-none flex-1 min-w-0" />
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => setShowMeta(!showMeta)} className={`p-1.5 rounded-md transition-colors ${showMeta ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Metadata">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={() => setShowMeta(!showMeta)} className={`p-1.5 rounded-md transition-colors ${showMeta ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Settings">
                     <Filter className="h-3.5 w-3.5" />
                   </button>
                   <button onClick={() => togglePin(selected)} className={`p-1.5 rounded-md ${selected.is_pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
@@ -198,7 +210,7 @@ const KnowledgeStudioPage = () => {
                   </button>
                   <div className="flex items-center gap-2 ml-2 text-[10px] text-muted-foreground">
                     <span>{wordCount}w</span>
-                    {saving && <span className="text-primary">Saving...</span>}
+                    {saving && <span className="text-primary flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving</span>}
                   </div>
                 </div>
               </div>
@@ -240,21 +252,27 @@ const KnowledgeStudioPage = () => {
                 )}
               </AnimatePresence>
 
-              {/* Rich Editor */}
-              <div className="flex-1 overflow-hidden">
-                <RichEditor content={htmlContent} onChange={(html, text) => { setHtmlContent(html); setPlainContent(text); }} />
+              {/* Smart Editor */}
+              <div className="flex-1 overflow-hidden relative">
+                <SmartEditor content={htmlContent} onChange={(html, text) => { setHtmlContent(html); setPlainContent(text); }} />
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-center">
-              <div>
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-lg font-display text-foreground mb-2">Knowledge Studio</p>
-                <p className="text-sm text-muted-foreground mb-4">Your personal research workspace — notes, rich text, AI-powered writing</p>
-                <button onClick={() => createNote()} className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
-                  <Plus className="h-4 w-4" /> New Note
-                </button>
-              </div>
+            <div className="flex-1 flex items-center justify-center text-center p-8">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
+                  <BookOpen className="h-8 w-8 text-primary" />
+                </div>
+                <p className="text-xl font-bold text-foreground mb-2">Knowledge Studio</p>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Your AI-powered research workspace. Create notes, extract insights from YouTube, and let AI enhance your writing.
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <button onClick={() => createNote()} className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium hover:opacity-90 transition-all">
+                    <Plus className="h-4 w-4" /> New Note
+                  </button>
+                </div>
+              </motion.div>
             </div>
           )}
         </div>
