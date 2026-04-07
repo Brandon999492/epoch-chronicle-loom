@@ -34,6 +34,7 @@ import AdminDashboardPage from "./pages/AdminDashboardPage";
 const HistoryMapPage = React.lazy(() => import("./pages/HistoryMapPage"));
 import ExplorePage from "./pages/ExplorePage";
 import CategoryPage from "./pages/CategoryPage";
+import LearnPage from "./pages/LearnPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
