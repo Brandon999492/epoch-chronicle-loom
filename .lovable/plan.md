@@ -1,32 +1,36 @@
-Refine and upgrade the Knowledge Studio into a polished, Apple Notes–style, AI-powered personal learning system with strong usability, clarity, and mobile-first design.
+Upgrade the Knowledge Studio into a fully AI-driven Personal History Learning System focused on ease of use, automation, and daily learning.
 
-This is not just a text editor — it must feel like a structured learning tool.
-
-----------------------------------
-
-CORE IMPROVEMENTS
+This system must prioritize user workflow over developer structure.
 
 ----------------------------------
 
-1. MOBILE-FIRST RESPONSIVENESS
-
-• Fix all layout issues on iPhone screens
-
-• Stack editor header elements vertically
-
-• Move overflow buttons into dropdown menus
-
-• Ensure all UI elements have minimum 44px tap targets
-
-• Prevent any overlapping text or hidden elements
-
-• Fix color picker and dropdowns using z-50 and viewport detection
+1. SMART NOTE CREATION (CORE FEATURE)
 
 ----------------------------------
 
-2. STRUCTURED NOTE SYSTEM (NOT WORD-LIKE)
+This is the primary workflow and must be the focus.
 
-• Replace free-form editing with structured sections:
+When user clicks "+ Quick Note":
+
+Show simple input:
+
+• Paste YouTube link
+
+• Enter topic
+
+• Write quick idea
+
+Then:
+
+→ ONE BUTTON: "Generate Full Note"
+
+System must:
+
+• automatically call AI
+
+• generate COMPLETE structured note
+
+• fill ALL sections:
 
   - Title
 
@@ -36,7 +40,7 @@ CORE IMPROVEMENTS
 
   - Year
 
-  - Timeline Period
+  - Timeline
 
   - Category
 
@@ -46,176 +50,304 @@ CORE IMPROVEMENTS
 
   - My Thoughts
 
-• Each section should behave like a separate editable block (Notion-style)
-
-• Add placeholders inside each section
-
-• Add subtle dividers between sections
-
-• Prevent the editor from feeling like one large text wall
+User should NOT need to manually run multiple AI tools.
 
 ----------------------------------
 
-3. AI ASSISTANT (CONTROLLED & TRANSPARENT)
-
-AI must NEVER auto-run blindly.
-
-Always show a clear action menu with:
-
-• Fix Grammar
-
-• Simplify
-
-• Expand
-
-• Summarize
-
-• Rewrite (Formal / Casual / Academic)
-
-• Extract Key Points
-
-• Convert to Timeline
-
-• Generate Full Structured Note
-
-• Show preview BEFORE applying changes
-
-• Allow Accept / Reject
-
-• If text is selected → only modify selection
-
-• If no selection → modify entire document
+2. AI AUTOMATION FIRST (NOT TOOL-BASED)
 
 ----------------------------------
 
-4. YOUTUBE AI UPGRADE
+Instead of forcing users to click many AI actions:
 
-When a YouTube link is added:
+• Automatically run:
 
-Automatically:
+  - extract timeline
 
-• Extract topic
+  - detect figures
 
-• Generate structured summary
+  - detect events
 
-• Create key bullet points
+  - generate tags
 
-• Detect timeline references (years/events)
+  - suggest category
 
-• Suggest category
+After note generation.
 
-Then:
-
-• Fill structured note sections
-
-• Embed video cleanly in a styled container
-
-• Link to relevant historical events if possible
+AI tools menu remains available for refinement only.
 
 ----------------------------------
 
-5. VOICE SYSTEM (FREE + FUTURE READY)
-
-Speech-to-Text:
-
-• Use Web Speech API
-
-• Real-time transcription into editor
-
-• Insert text at cursor
-
-• Show recording indicator
-
-Text-to-Speech:
-
-• Use speechSynthesis API
-
-• Play selected text or full note
-
-• Voice selector dropdown
-
-• Speed control (0.5x–2x)
-
-• Stop button
-
-• Prepare system for future premium AI voice upgrade
+3. YOUTUBE AUTO-INTELLIGENCE (CRITICAL)
 
 ----------------------------------
 
-6. STUDIO SETTINGS PANEL
+When a YouTube link is detected:
 
-Create slide-out settings panel with:
+System must automatically:
 
-• Font size (Small / Medium / Large)
+• extract video topic
 
-• Reading width (600px / 720px / 900px)
+• generate structured summary
 
-• Editor mode default (Simple / Advanced)
+• extract key points
 
-• Animation toggle
+• detect historical references
 
-• Focus mode toggle (hide UI distractions)
+• assign category
 
-Save in localStorage per user
+• link to related events
 
-----------------------------------
-
-7. MEDIA HANDLING FIX
-
-• Images must be contained, centered, and styled
-
-• Videos must use responsive aspect-ratio containers
-
-• Prevent media from breaking layout
-
-• Add spacing around media
+This must happen WITHOUT requiring extra clicks.
 
 ----------------------------------
 
-8. QUICK CAPTURE IMPROVEMENT
-
-• Replace input with auto-resizing textarea
-
-• Add "Generate Detailed Note" toggle
-
-• Allow longer input
-
-• Output fully structured notes (not plain text)
+4. RELATED HISTORY (KEEP BUT IMPROVE)
 
 ----------------------------------
 
-9. UI/UX POLISH (APPLE NOTES STYLE)
+Keep Related History panel but:
 
-• Softer background colors
+• auto-load instantly after note generation
 
-• More whitespace
+• highlight strongest matches
 
-• Smooth animations (fade, slide)
+• show:
 
-• Clean typography
+  - related events
 
-• Minimal UI clutter
+  - related figures
 
-• Focus on readability and calm design
+  - related time periods
+
+Make it feel like "connections", not search results.
 
 ----------------------------------
 
-10. LEARNING EXPERIENCE LAYER
+5. TIMELINE SYSTEM (KEEP)
+
+----------------------------------
+
+Keep timeline view but improve:
+
+• allow dragging notes on timeline
+
+• group notes by era
+
+• show visual clusters (e.g. WWII, Ancient Egypt)
+
+----------------------------------
+
+6. LEARNING SYSTEM (MAKE IT ENGAGING)
+
+----------------------------------
+
+Upgrade from simple stats to:
+
+• Daily learning summary ("You learned X topics today")
+
+• Streak system (days active)
+
+• Subject mastery bars (Ice Age, Space, etc.)
+
+• Weekly goal tracking
+
+• "Next topic to learn" suggestions
+
+----------------------------------
+
+7. AI VOICE SYSTEM (KEEP + IMPROVE)
+
+----------------------------------
+
+Keep current system but:
 
 Add:
 
-• Daily learning tracker
+• "Documentary Mode" (already planned)
 
-• Weekly goals
+• paragraph highlighting while speaking
 
-• Subject progress tracking
+• pause/resume controls
 
-• “You learned today” summary
-
-• Streak system
+Prepare system for future premium voices.
 
 ----------------------------------
 
-DO NOT break existing database or API structure.
+8. SIMPLICITY OVER COMPLEXITY
 
-All improvements must integrate with current Knowledge Studio system.
+----------------------------------
+
+Reduce visible complexity:
+
+• hide advanced tools by default
+
+• show only:
+
+  - Generate Note
+
+  - AI Assist
+
+  - Add Source
+
+Everything else is secondary.
+
+----------------------------------
+
+9. MOBILE-FIRST PRIORITY
+
+----------------------------------
+
+Ensure:
+
+• all features work perfectly on iPhone
+
+• no overlapping UI
+
+• easy one-hand use
+
+• quick note creation is instant
+
+----------------------------------
+
+Goal:
+
+Create a system where the user can:
+
+• watch a video  
+
+• press one button  
+
+• instantly get a structured history note  
+
+• see related events  
+
+• track learning progress  
+
+This must feel fast, simple, and powerful
+
+&nbsp;
+
+# Knowledge Studio → AI-Powered Personal History Learning System
+
+## Overview
+
+Expand the Knowledge Studio with advanced AI learning actions, database auto-linking, a notes timeline view, learning progress tracking, documentary voice mode, and focus/reading modes — all built on top of the existing system.
+
+---
+
+## 1. Advanced AI Learning Actions
+
+**Files: `supabase/functions/knowledge-ai/index.ts`, `SmartEditor.tsx**`
+
+Add new actions to the edge function and the AI menu:
+
+- `extract_timeline` — returns chronological list of events from note content
+- `extract_figures` — identifies historical figures mentioned
+- `extract_events` — identifies key historical events
+- `eli5` — "Explain Like I'm 10" rewrite
+- `quiz` — generates 5 quiz questions from content
+- `suggest_related` — queries the database for related events/figures
+
+The SmartEditor AI menu gets a second section "Learning Tools" with these new actions. Quiz results render inline in a styled panel below the editor with interactive answer reveals.
+
+For `suggest_related`, the edge function will query `historical_events` and `historical_figures` tables using keyword matching from the note content.
+
+## 2. Auto-Link to History Database (Related History Panel)
+
+**Files: `KnowledgeStudioPage.tsx`, `supabase/functions/knowledge-ai/index.ts**`
+
+Add a collapsible "Related History" sidebar panel (right side on desktop, bottom sheet on mobile):
+
+- When a note is saved/opened, extract keywords from title + content
+- Call a new `find_related` action in the edge function that:
+  - Takes keywords and searches `historical_events` (title ILIKE) and `historical_figures` (name ILIKE) via Supabase client inside the edge function
+  - Returns top 5 events + top 3 figures with IDs and slugs
+- Display as clickable cards linking to `/event/:id` and figure pages
+- Auto-refresh when note content changes significantly (debounced)
+
+## 3. Visual Timeline for Notes
+
+**Files: `KnowledgeStudioPage.tsx` (new "Timeline" tab in sidebar)**
+
+Add a toggle in the sidebar header to switch between "List" and "Timeline" views:
+
+- Timeline view shows notes plotted vertically by `linked_year`
+- Each note appears as a dot/card on the timeline axis
+- Filter by category/subject using existing filter chips
+- Notes without a year are grouped in an "Undated" section at bottom
+- Uses existing note data — no new DB queries needed
+
+## 4. Smart YouTube Analysis Upgrade
+
+**File: `supabase/functions/knowledge-ai/index.ts**`
+
+The existing `youtube_structured` action already extracts structured data. Enhance it:
+
+- Add `related_events` and `mentioned_figures` fields to the tool schema
+- After AI extraction, run a quick DB search for those entities and return matches
+- Auto-fill the Related History panel when a YouTube note is generated
+
+## 5. Learning System (Progress & Streaks)
+
+**Files: `KnowledgeStudioPage.tsx` (new `LearningTracker` component)**
+
+Add a "Learning" panel accessible from the sidebar:
+
+- **Daily tracker**: Count notes created today (query `knowledge_notes` by `created_at`)
+- **Streak**: Count consecutive days with at least 1 note created
+- **Subject progress bars**: Count notes per category, show as progress bars
+- **Stats**: Total notes, unique categories covered, time periods explored (from `linked_year`)
+- **"Continue Learning"**: Show categories with fewest notes as suggestions
+
+All data derived from existing `knowledge_notes` table — no new tables needed. Stats computed client-side from the already-fetched notes array.
+
+## 6. Smart Organization (Auto-tagging)
+
+**Files: `KnowledgeStudioPage.tsx`, `supabase/functions/knowledge-ai/index.ts**`
+
+Add an `auto_tag` action to the edge function:
+
+- Takes note content, returns suggested tags and category
+- Called automatically after AI generation or manually via a "Smart Tag" button
+- Updates the note's tags and category fields
+
+## 7. Documentary Mode (Voice Upgrade)
+
+**File: `SmartEditor.tsx**`
+
+Upgrade TTS with a "Documentary Mode" toggle:
+
+- Slower rate (0.75x), deeper voice selection preference
+- Reads paragraph-by-paragraph with pauses between sections
+- Uses `speechSynthesis` — splits content by paragraphs, queues utterances with 1.5s gaps
+- Visual indicator shows which paragraph is being read
+
+## 8. Focus Mode & Reading Mode
+
+**Files: `KnowledgeStudioPage.tsx`, `SmartEditor.tsx**`
+
+- **Focus Mode**: Toggle that hides sidebar + header + all toolbars. Only the note content remains centered on screen with a minimal close button.
+- **Reading Mode**: Toggle that makes editor non-editable, hides all editing UI, increases font size slightly, and applies a warmer background tint.
+- Both accessible from the editor header and Studio Settings panel.
+
+---
+
+## Technical Details
+
+**Files to create:**
+
+- `src/components/studio/LearningTracker.tsx` — progress panel
+- `src/components/studio/RelatedHistory.tsx` — related events/figures panel
+- `src/components/studio/NotesTimeline.tsx` — timeline view
+
+**Files to modify:**
+
+- `src/pages/KnowledgeStudioPage.tsx` — integrate new panels, timeline view, focus/reading modes
+- `src/components/studio/SmartEditor.tsx` — expanded AI menu, documentary mode, reading mode
+- `src/components/studio/StudioSettings.tsx` — add focus mode toggle
+- `supabase/functions/knowledge-ai/index.ts` — add `extract_timeline`, `extract_figures`, `eli5`, `quiz`, `auto_tag`, `find_related` actions
+
+**Database:** No schema changes needed. All features use existing `knowledge_notes` and public `historical_events`/`historical_figures` tables.
+
+**Edge function additions:** New actions use the existing `callAI` helper with tool-calling for structured output. `find_related` creates a Supabase client inside the edge function to query the DB.
