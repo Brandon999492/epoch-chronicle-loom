@@ -569,7 +569,9 @@ const KnowledgeStudioPage = () => {
 
       <AnimatePresence>
         {showSettings && (
-          <StudioSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} settings={settings} onChange={updateSettings} />
+          <StudioSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} settings={settings} onChange={updateSettings}
+            focusMode={focusMode} onFocusMode={setFocusMode}
+            readingMode={readingMode} onReadingMode={setReadingMode} />
         )}
       </AnimatePresence>
     </div>
@@ -578,6 +580,13 @@ const KnowledgeStudioPage = () => {
 
 function buildStructuredHtml(s: any, videoEmbed: string): string {
   const kp = (s.key_points || []).map((p: string) => `<li>${p}</li>`).join("");
+  const timeline = (s.timeline || []).map((t: any) =>
+    `<li><strong>${t.year}</strong> — ${t.title}: ${t.description}</li>`
+  ).join("");
+  const figures = (s.figures || []).map((f: any) =>
+    `<li><strong>${f.name}</strong> (${f.role}) — ${f.significance}</li>`
+  ).join("");
+
   return `
 <h1>${s.title || ""}</h1>
 <p><strong>${s.headline || ""}</strong></p>
@@ -596,6 +605,8 @@ function buildStructuredHtml(s: any, videoEmbed: string): string {
 <hr/>
 <div class="section-label">Detailed Notes</div>
 <p>${(s.detailed_notes || "").replace(/\n/g, "</p><p>")}</p>
+${timeline ? `<hr/><div class="section-label">Timeline</div><ul>${timeline}</ul>` : ""}
+${figures ? `<hr/><div class="section-label">Key Figures</div><ul>${figures}</ul>` : ""}
 <hr/>
 <div class="section-label">My Thoughts</div>
 <p style="color:hsl(var(--muted-foreground));font-style:italic">${s.thoughts || "Add your thoughts here…"}</p>

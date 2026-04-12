@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { action, text, url } = await req.json();
+    const { action, text, url, detailed } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -57,9 +57,10 @@ serve(async (req) => {
       if (!input) return jsonResp({ error: "Provide a topic, text, or URL" }, 400);
 
       const isYoutube = input.match(/(?:youtu\.be\/|v=)([^&?]+)/);
+      const detailLevel = detailed ? "extremely comprehensive and in-depth (8-10 paragraphs for detailed notes, 8-12 key points, 6-8 timeline events)" : "comprehensive (4-6 paragraphs for detailed notes, 5-10 key points)";
       const userPrompt = isYoutube
-        ? `Analyze this YouTube video URL and generate an extremely comprehensive, structured knowledge note. Include all historical context, timeline, figures, events, and quiz questions: ${input}`
-        : `Generate an extremely comprehensive, structured knowledge note about: ${input}. Include all historical context, timeline, figures, events, and quiz questions.`;
+        ? `Analyze this YouTube video URL and generate an ${detailLevel}, structured knowledge note. Include all historical context, timeline, figures, events, and quiz questions: ${input}`
+        : `Generate an ${detailLevel}, structured knowledge note about: ${input}. Include all historical context, timeline, figures, events, and quiz questions.`;
 
       const tools = [{
         type: "function",

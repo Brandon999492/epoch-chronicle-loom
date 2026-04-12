@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, X, Sparkles, Loader2, Youtube, Lightbulb, Link2, Wand2 } from "lucide-react";
+import { Plus, X, Sparkles, Loader2, Youtube, Lightbulb, Link2, Wand2, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
   const [input, setInput] = useState("");
   const [generating, setGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [detailedMode, setDetailedMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const stepInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -53,7 +54,7 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("knowledge-ai", {
-        body: { action: "magic_note", text: input.trim(), url: input.trim() },
+        body: { action: "magic_note", text: input.trim(), url: input.trim(), detailed: detailedMode },
       });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
@@ -143,6 +144,22 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
                     )}
                   </div>
 
+                  {/* Detailed mode toggle */}
+                  <button
+                    onClick={() => setDetailedMode(!detailedMode)}
+                    className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-xl border transition-all mb-4 min-h-[44px]
+                      ${detailedMode ? "border-primary/40 bg-primary/5 text-primary" : "border-border/50 bg-secondary/20 text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <div className="text-left flex-1">
+                      <p className="text-xs font-medium">Generate Detailed Note</p>
+                      <p className="text-[10px] opacity-70">{detailedMode ? "Extended content with deeper analysis" : "Standard length note"}</p>
+                    </div>
+                    <div className={`w-9 h-5 rounded-full transition-colors flex items-center ${detailedMode ? "bg-primary justify-end" : "bg-secondary justify-start"}`}>
+                      <div className="w-4 h-4 rounded-full bg-background shadow-sm mx-0.5" />
+                    </div>
+                  </button>
+
                   <p className="text-[11px] text-muted-foreground mb-4 flex items-center gap-1.5">
                     <Sparkles className="h-3 w-3 text-primary" />
                     AI generates a complete note with summary, timeline, figures, quiz & more
@@ -168,7 +185,9 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
                   </div>
 
                   <h3 className="text-center font-semibold text-foreground text-lg mb-1">Creating Magic Note</h3>
-                  <p className="text-center text-xs text-muted-foreground mb-6">AI is building your complete structured note</p>
+                  <p className="text-center text-xs text-muted-foreground mb-6">
+                    AI is building your {detailedMode ? "detailed " : ""}structured note
+                  </p>
 
                   <div className="space-y-2">
                     {GENERATION_STEPS.map((step, i) => (

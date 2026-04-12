@@ -1,4 +1,4 @@
-import { X, Type, Columns, Monitor, Zap } from "lucide-react";
+import { X, Type, Columns, Monitor, Zap, Maximize2, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import type { StudioSettings } from "./SmartEditor";
 
@@ -7,9 +7,13 @@ interface StudioSettingsProps {
   onClose: () => void;
   settings: StudioSettings;
   onChange: (settings: StudioSettings) => void;
+  focusMode?: boolean;
+  onFocusMode?: (v: boolean) => void;
+  readingMode?: boolean;
+  onReadingMode?: (v: boolean) => void;
 }
 
-export function StudioSettingsPanel({ open, onClose, settings, onChange }: StudioSettingsProps) {
+export function StudioSettingsPanel({ open, onClose, settings, onChange, focusMode, onFocusMode, readingMode, onReadingMode }: StudioSettingsProps) {
   if (!open) return null;
 
   const update = (partial: Partial<StudioSettings>) => {
@@ -80,6 +84,34 @@ export function StudioSettingsPanel({ open, onClose, settings, onChange }: Studi
             <Option label="Off" active={!settings.animations} onClick={() => update({ animations: false })} />
           </div>
         </div>
+
+        {/* Focus Mode */}
+        {onFocusMode && (
+          <div>
+            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <Maximize2 className="h-3.5 w-3.5" /> Focus Mode
+            </label>
+            <p className="text-[11px] text-muted-foreground/70 mb-2">Hide sidebar, header & toolbars. Only the note content remains.</p>
+            <div className="flex gap-2">
+              <Option label="Off" active={!focusMode} onClick={() => onFocusMode(false)} />
+              <Option label="On" active={!!focusMode} onClick={() => { onFocusMode(true); onClose(); }} />
+            </div>
+          </div>
+        )}
+
+        {/* Reading Mode */}
+        {onReadingMode && (
+          <div>
+            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <Eye className="h-3.5 w-3.5" /> Reading Mode
+            </label>
+            <p className="text-[11px] text-muted-foreground/70 mb-2">Non-editable view with larger text and warm tint.</p>
+            <div className="flex gap-2">
+              <Option label="Off" active={!readingMode} onClick={() => onReadingMode(false)} />
+              <Option label="On" active={!!readingMode} onClick={() => onReadingMode(true)} />
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
