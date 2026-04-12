@@ -469,6 +469,8 @@ export function SmartEditor({ content, onChange, settings, focusMode, readingMod
 
       {/* Editor Area */}
       <div className="flex-1 overflow-y-auto relative">
+        {/* Paragraph highlight effect for documentary mode */}
+        <ParagraphHighlighter editorRef={editorRef} activeIndex={activeParagraphIndex} />
         <div
           ref={editorRef}
           contentEditable={!readingMode}
