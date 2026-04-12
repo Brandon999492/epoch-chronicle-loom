@@ -136,8 +136,14 @@ const KnowledgeStudioPage = () => {
       setNotes((prev) => [data as KNote, ...prev]);
       selectNote(data as KNote);
       if (quickTitle) toast.success("Note created!");
-      // If structured data has related history, set it
+      // Auto-populate related history from Magic Note
       if (structured?.related) setRelatedData(structured.related);
+      // Auto-populate quiz from Magic Note
+      if (structured?.quiz?.length) {
+        setQuizData({ questions: structured.quiz });
+        setQuizAnswers({});
+        setShowQuizResults(false);
+      }
     }
     if (error) toast.error("Failed to create note");
   };
