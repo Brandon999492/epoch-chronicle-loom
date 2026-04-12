@@ -547,3 +547,27 @@ export function SmartEditor({ content, onChange, settings, focusMode, readingMod
     </div>
   );
 }
+
+/** Highlights the active paragraph in documentary mode */
+function ParagraphHighlighter({ editorRef, activeIndex }: { editorRef: React.RefObject<HTMLDivElement>; activeIndex: number | null }) {
+  useEffect(() => {
+    if (!editorRef.current) return;
+    const els = editorRef.current.querySelectorAll("p, li, h1, h2, h3, blockquote");
+    els.forEach((el, i) => {
+      const htmlEl = el as HTMLElement;
+      if (activeIndex !== null && i === activeIndex) {
+        htmlEl.style.backgroundColor = "hsl(var(--primary) / 0.08)";
+        htmlEl.style.borderRadius = "8px";
+        htmlEl.style.transition = "background-color 0.3s ease";
+        htmlEl.style.padding = "4px 8px";
+        htmlEl.style.margin = "-4px -8px";
+      } else {
+        htmlEl.style.backgroundColor = "";
+        htmlEl.style.borderRadius = "";
+        htmlEl.style.padding = "";
+        htmlEl.style.margin = "";
+      }
+    });
+  }, [activeIndex, editorRef]);
+  return null;
+}
