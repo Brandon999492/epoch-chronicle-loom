@@ -51,6 +51,106 @@ serve(async (req) => {
       try { return JSON.parse(tc.function.arguments); } catch { throw new Error("Failed to parse AI response"); }
     };
 
+    // ─── Magic Note (Full Automation) ───
+    if (action === "magic_note") {
+      const input = text?.trim() || url?.trim();
+      if (!input) return jsonResp({ error: "Provide a topic, text, or URL" }, 400);
+
+      const isYoutube = input.match(/(?:youtu\.be\/|v=)([^&?]+)/);
+      const userPrompt = isYoutube
+        ? `Analyze this YouTube video URL and generate an extremely comprehensive, structured knowledge note. Include all historical context, timeline, figures, events, and quiz questions: ${input}`
+        : `Generate an extremely comprehensive, structured knowledge note about: ${input}. Include all historical context, timeline, figures, events, and quiz questions.`;
+
+      const tools = [{
+        type: "function",
+        function: {
+          name: "create_magic_note",
+          description: "Create a comprehensive structured knowledge note with all fields, timeline, figures, events, and quiz.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Clear, concise title" },
+              headline: { type: "string", description: "One-line engaging headline" },
+              summary: { type: "string", description: "2-3 sentence summary" },
+              year: { type: "string", description: "Relevant year or date range" },
+              timeline_period: { type: "string", description: "Historical period" },
+              category: { type: "string", description: "Category: Ice Age, Space, Serial Killers, Ancient Egypt, Ancient Greece, Royal Family, Dinosaurs, Earth History, Extinction Events, American History, or custom" },
+              key_points: { type: "array", items: { type: "string" }, description: "5-10 key points" },
+              detailed_notes: { type: "string", description: "Detailed educational content, 4-6 paragraphs" },
+              thoughts: { type: "string", description: "Reflection questions or areas for further study" },
+              tags: { type: "array", items: { type: "string" }, description: "5-10 relevant tags" },
+              mentioned_figures: { type: "array", items: { type: "string" }, description: "Historical figures mentioned" },
+              mentioned_events: { type: "array", items: { type: "string" }, description: "Historical events referenced" },
+              timeline: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    year: { type: "string" },
+                    title: { type: "string" },
+                    description: { type: "string" },
+                  },
+                  required: ["year", "title", "description"],
+                  additionalProperties: false,
+                },
+                description: "Chronological timeline of events mentioned",
+              },
+              figures: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    role: { type: "string" },
+                    significance: { type: "string" },
+                  },
+                  required: ["name", "role", "significance"],
+                  additionalProperties: false,
+                },
+                description: "Key historical figures with roles",
+              },
+              quiz: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    question: { type: "string" },
+                    options: { type: "array", items: { type: "string" } },
+                    correct_index: { type: "number" },
+                    explanation: { type: "string" },
+                  },
+                  required: ["question", "options", "correct_index", "explanation"],
+                  additionalProperties: false,
+                },
+                description: "5 multiple-choice quiz questions",
+              },
+            },
+            required: ["title", "headline", "summary", "year", "timeline_period", "category", "key_points", "detailed_notes", "thoughts", "tags", "mentioned_figures", "mentioned_events", "timeline", "figures", "quiz"],
+            additionalProperties: false,
+          },
+        },
+      }];
+
+      const data = await callAI(
+        "You are an expert history knowledge assistant. Generate the most comprehensive, educational structured note possible. Fill EVERY field thoroughly. Include a detailed timeline of events, identify all key figures with their roles, and create 5 challenging quiz questions. Be factual, detailed, and engaging.",
+        userPrompt, tools,
+        { type: "function", function: { name: "create_magic_note" } }
+      );
+
+      const err = handleAiError(data);
+      if (err) return err;
+
+      const structured = parseToolCall(data);
+      const videoId = isYoutube ? isYoutube[1] : null;
+
+      let related = null;
+      try {
+        related = await findRelatedHistory(structured.mentioned_figures || [], structured.mentioned_events || [], structured.title);
+      } catch (e) { console.error("find_related error:", e); }
+
+      return jsonResp({ structured, videoId, related });
+    }
+
     // ─── Generate Structured Note ───
     if (action === "generate_structured_note") {
       const input = text?.trim() || url?.trim();
