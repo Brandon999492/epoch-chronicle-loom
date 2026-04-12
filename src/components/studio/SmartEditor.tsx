@@ -53,6 +53,7 @@ export function SmartEditor({ content, onChange, settings, focusMode, readingMod
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSpeed, setSpeechSpeed] = useState(1);
   const [documentaryMode, setDocumentaryMode] = useState(false);
+  const [activeParagraphIndex, setActiveParagraphIndex] = useState<number | null>(null);
   const recognitionRef = useRef<any>(null);
 
   const fs = fontSizeMap[settings?.fontSize || "medium"];
@@ -195,20 +196,28 @@ export function SmartEditor({ content, onChange, settings, focusMode, readingMod
     setIsRecording(true);
   };
 
-  // ─── Voice: Text-to-Speech (with Documentary Mode) ───
+  // ─── Voice: Text-to-Speech (with Documentary Mode + paragraph highlighting) ───
   const speakText = () => {
-    if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); return; }
+    if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); setActiveParagraphIndex(null); return; }
     const sel = window.getSelection();
     const text = sel?.toString().trim() || editorRef.current?.innerText || "";
     if (!text.trim()) { toast.error("Nothing to read"); return; }
 
     if (documentaryMode) {
-      // Paragraph-by-paragraph with pauses
+      // Paragraph-by-paragraph with pauses and highlighting
       const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
       setIsSpeaking(true);
       let i = 0;
       const speakNext = () => {
-        if (i >= paragraphs.length) { setIsSpeaking(false); return; }
+        if (i >= paragraphs.length) { setIsSpeaking(false); setActiveParagraphIndex(null); return; }
+        setActiveParagraphIndex(i);
+        // Scroll highlighted paragraph into view
+        if (editorRef.current) {
+          const pElements = editorRef.current.querySelectorAll("p, li, h1, h2, h3, blockquote, div:not([style])");
+          if (pElements[i]) {
+            pElements[i].scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
         const utterance = new SpeechSynthesisUtterance(paragraphs[i]);
         utterance.rate = 0.75;
         utterance.pitch = 0.9;
@@ -216,7 +225,7 @@ export function SmartEditor({ content, onChange, settings, focusMode, readingMod
           i++;
           setTimeout(speakNext, 1500);
         };
-        utterance.onerror = () => setIsSpeaking(false);
+        utterance.onerror = () => { setIsSpeaking(false); setActiveParagraphIndex(null); };
         window.speechSynthesis.speak(utterance);
       };
       speakNext();
