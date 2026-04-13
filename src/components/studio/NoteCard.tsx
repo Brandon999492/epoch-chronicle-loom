@@ -1,14 +1,7 @@
-import { htmlToPlainText, normalizeCategory } from "./studio-note-utils";
+import { htmlToPlainText, normalizeCategory, type StudioNote } from "./studio-note-utils";
 
 interface NoteCardProps {
-  note: {
-    id: string;
-    title: string;
-    content: string | null;
-    html_content: string | null;
-    category: string | null;
-    updated_at: string;
-  };
+  note: StudioNote;
   isSelected: boolean;
   onClick: () => void;
 }
@@ -18,7 +11,7 @@ const SECTION_LABELS = new Set([
 ]);
 
 export function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
-  const preview = buildPreview(note.content, note.html_content);
+  const preview = buildPreview(note.html_content);
   const category = normalizeCategory(note.category);
   const updatedLabel = formatUpdated(note.updated_at);
 
@@ -43,15 +36,16 @@ export function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
   );
 }
 
-function buildPreview(content: string | null, htmlContent: string | null): string {
-  const source = (content || htmlToPlainText(htmlContent || "")).replace(/\r/g, "");
+function buildPreview(htmlContent: StudioNote["html_content"]): string {
+  const source = htmlToPlainText(htmlContent).replace(/\r/g, "");
   const cleaned = source.split(/\n+/).map((l) => l.trim())
     .filter((l) => l && !SECTION_LABELS.has(l.replace(/:$/, "").toLowerCase()))
     .join(" ").replace(/[•\-]+\s*/g, "").replace(/\s{2,}/g, " ").trim();
   return cleaned || "Start writing your note here.";
 }
 
-function formatUpdated(dateStr: string): string {
+function formatUpdated(dateStr?: string): string {
+  if (!dateStr) return "Recently";
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "Recently";
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(d);

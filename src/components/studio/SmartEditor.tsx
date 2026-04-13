@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bold, Italic, Palette, Underline } from "lucide-react";
+import type { StudioNote } from "./studio-note-utils";
 
 interface SmartEditorProps {
-  content: string;
+  content: StudioNote["html_content"];
   onChange: (html: string, text: string) => void;
   settings: StudioSettings;
   placeholder?: string;
