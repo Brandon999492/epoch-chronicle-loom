@@ -31,3 +31,12 @@ export function fixWikimediaUrl(url: string | undefined, sourceLinks?: { label: 
 export function wikiImageUrl(title: string): string {
   return `${SUPABASE_URL}/functions/v1/image-proxy?wiki=${encodeURIComponent(title)}`;
 }
+
+/**
+ * Fix any image URL that might be from wikimedia/wikipedia.
+ * For database events that store raw wikimedia URLs.
+ */
+export function proxyImageUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  return fixWikimediaUrl(url);
+}
