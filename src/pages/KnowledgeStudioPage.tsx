@@ -12,13 +12,14 @@ import {
   buildStructuredBodyHtml, buildStructuredBodyPlainText, createNoteBodyHtml,
   createNoteBodyPlainText, DEFAULT_CATEGORY, DEFAULT_NOTE_TITLE, extractMediaMarkup,
   htmlToPlainText, isYouTubeUrl, MAGIC_INPUT_LIMIT, normalizeCategory, normalizeStoredHtml,
-  plainTextToEditorHtml, STUDIO_CATEGORIES, type StudioStructuredNote,
+  plainTextToEditorHtml, STUDIO_CATEGORIES, toStudioNote, type StudioNote, type StudioStructuredNote,
 } from "@/components/studio/studio-note-utils";
 
-type KNote = {
-  id: string; user_id: string; title: string; content: string | null;
-  html_content: string | null; category: string | null;
-  created_at: string; updated_at: string; word_count: number | null;
+type KNote = StudioNote & {
+  user_id: string;
+  content: string | null;
+  created_at: string;
+  word_count: number | null;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -79,7 +80,7 @@ export default function KnowledgeStudioPage() {
   const themeClass = settings.theme === "light" ? "studio-theme-light" : settings.theme === "dark" ? "studio-theme-dark" : "studio-theme-warm";
 
   const loadDraft = useCallback((note: KNote) => {
-    const html = note.html_content?.trim() ? normalizeStoredHtml(note.html_content) : plainTextToEditorHtml(note.content || "");
+    const html = normalizeStoredHtml(note.html_content);
     setDraftTitle(note.title || DEFAULT_NOTE_TITLE);
     setDraftHtml(html);
     setDraftText((note.content || htmlToPlainText(html)).trim());
@@ -128,7 +129,7 @@ export default function KnowledgeStudioPage() {
   useEffect(() => {
     if (!selected) return;
     const snap = JSON.stringify({ t: draftTitle.trim() || DEFAULT_NOTE_TITLE, h: draftHtml.trim(), x: draftText.trim(), c: normalizeCategory(draftCategory) });
-    const curHtml = selected.html_content?.trim() ? normalizeStoredHtml(selected.html_content) : plainTextToEditorHtml(selected.content || "");
+    const curHtml = normalizeStoredHtml(selected.html_content);
     const curSnap = JSON.stringify({ t: (selected.title || DEFAULT_NOTE_TITLE).trim(), h: curHtml.trim(), x: (selected.content || htmlToPlainText(curHtml)).trim(), c: normalizeCategory(selected.category) });
     if (snap === curSnap) return;
 
@@ -268,7 +269,7 @@ export default function KnowledgeStudioPage() {
                   <button type="button" onClick={createNote} className="mt-3 text-sm font-medium text-primary hover:underline">Create your first note</button>
                 </div>
               )}
-              {filtered.map((n) => <NoteCard key={n.id} note={n} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
+              {filtered.map((n) => <NoteCard key={n.id} note={toStudioNote(n)} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
             </div>
           </aside>
         )}

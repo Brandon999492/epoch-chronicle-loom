@@ -11,6 +11,14 @@ export type StudioStructuredNote = {
   timeline?: Array<{ year?: string | number | null; title?: string | null; description?: string | null }> | null;
 };
 
+export type StudioNote = {
+  id: string;
+  title: string;
+  html_content: string;
+  category?: string;
+  updated_at?: string;
+};
+
 type NoteSections = {
   headline: string;
   summary: string;
@@ -43,6 +51,21 @@ export function normalizeCategory(value?: string | null): string {
   const exact = STUDIO_CATEGORIES.find((c) => c.toLowerCase() === trimmed.toLowerCase());
   if (exact) return exact;
   return trimmed.split(/\s+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+}
+
+export function toStudioNote(note: Pick<StudioNote, "id"> & {
+  title?: string | null;
+  html_content?: string | null;
+  category?: string | null;
+  updated_at?: string | null;
+}): StudioNote {
+  return {
+    id: note.id,
+    title: (note.title ?? DEFAULT_NOTE_TITLE).trim() || DEFAULT_NOTE_TITLE,
+    html_content: normalizeStoredHtml(note.html_content),
+    category: note.category ? normalizeCategory(note.category) : undefined,
+    updated_at: note.updated_at || undefined,
+  };
 }
 
 export function createNoteBodyHtml(): string {
