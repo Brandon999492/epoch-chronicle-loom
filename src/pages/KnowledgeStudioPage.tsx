@@ -274,44 +274,44 @@ export default function KnowledgeStudioPage() {
           </aside>
         )}
 
-        {(!isMobile || mobilePane === "editor") && (
-          <div className="flex h-full min-w-0 flex-col bg-background">
-            {selected ? (
-              <>
-                <div className="border-b border-border/70 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {isMobile && (
-                      <button type="button" onClick={() => { setMobilePane("list"); setSelectedId(null); }}
-                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
-                        <ArrowLeft className="h-5 w-5" />
+          {(!isMobile || mobilePane === "editor") && (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+              {selected ? (
+                <>
+                  <div className="shrink-0 border-b border-border/70 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {isMobile && (
+                        <button type="button" onClick={() => { setMobilePane("list"); setSelectedId(null); }}
+                          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
+                          <ArrowLeft className="h-5 w-5" />
+                        </button>
+                      )}
+                      <input type="text" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)}
+                        placeholder="Title or paste YouTube link…"
+                        className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-foreground placeholder:text-muted-foreground/50 outline-none" />
+                      {saveLabel && <span className="shrink-0 text-xs text-muted-foreground">{saveLabel}</span>}
+                      <button type="button" onClick={deleteNote} aria-label="Delete note"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
                       </button>
-                    )}
-                    <input type="text" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)}
-                      placeholder="Title or paste YouTube link…"
-                      className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-foreground placeholder:text-muted-foreground/50 outline-none" />
-                    {saveLabel && <span className="shrink-0 text-xs text-muted-foreground">{saveLabel}</span>}
-                    <button type="button" onClick={deleteNote} aria-label="Delete note"
-                      className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-destructive transition-colors">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    </div>
+
+                    <p className="mt-2 text-xs text-muted-foreground/60">Start writing or use AI to generate a note from a topic or video.</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <AiBtn icon={Sparkles} label="Improve" tooltip="Fix grammar and improve clarity" loading={aiAction === "improve"} disabled={!!aiAction} onClick={() => runAi("improve")} />
+                      <AiBtn icon={Brain} label="Generate" tooltip="Create a structured note from topic or video" loading={aiAction === "generate"} disabled={!!aiAction} onClick={() => runAi("generate")} />
+                      <AiBtn icon={Wand2} label="Magic" tooltip="Full auto — structured note from short topic or video" loading={aiAction === "magic"} disabled={!!aiAction} primary onClick={() => runAi("magic")} />
+
+                      <select value={draftCategory} onChange={(e) => setDraftCategory(e.target.value)}
+                        className="h-9 rounded-xl border border-border/70 bg-background px-3 text-xs text-foreground outline-none md:ml-auto">
+                        {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
                   </div>
 
-                  <p className="mt-2 text-xs text-muted-foreground/60">Start writing or use AI to generate a note from a topic or video.</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <AiBtn icon={Sparkles} label="Improve" tooltip="Fix grammar and improve clarity" loading={aiAction === "improve"} disabled={!!aiAction} onClick={() => runAi("improve")} />
-                    <AiBtn icon={Brain} label="Generate" tooltip="Create a structured note from topic or video" loading={aiAction === "generate"} disabled={!!aiAction} onClick={() => runAi("generate")} />
-                    <AiBtn icon={Wand2} label="Magic" tooltip="Full auto — structured note from short topic or video" loading={aiAction === "magic"} disabled={!!aiAction} primary onClick={() => runAi("magic")} />
-
-                    <select value={draftCategory} onChange={(e) => setDraftCategory(e.target.value)}
-                      className="ml-auto h-9 rounded-xl border border-border/70 bg-background px-3 text-xs text-foreground outline-none">
-                      {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                  <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+                    <SmartEditor content={draftHtml} onChange={(html, text) => { setDraftHtml(html); setDraftText(text); }} settings={settings} />
                   </div>
-                </div>
-
-                <div className="flex-1 overflow-hidden">
-                  <SmartEditor content={draftHtml} onChange={(html, text) => { setDraftHtml(html); setDraftText(text); }} settings={settings} />
-                </div>
               </>
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center text-muted-foreground">
