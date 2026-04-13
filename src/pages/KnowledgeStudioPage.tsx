@@ -12,13 +12,14 @@ import {
   buildStructuredBodyHtml, buildStructuredBodyPlainText, createNoteBodyHtml,
   createNoteBodyPlainText, DEFAULT_CATEGORY, DEFAULT_NOTE_TITLE, extractMediaMarkup,
   htmlToPlainText, isYouTubeUrl, MAGIC_INPUT_LIMIT, normalizeCategory, normalizeStoredHtml,
-  plainTextToEditorHtml, STUDIO_CATEGORIES, type StudioStructuredNote,
+  plainTextToEditorHtml, STUDIO_CATEGORIES, toStudioNote, type StudioNote, type StudioStructuredNote,
 } from "@/components/studio/studio-note-utils";
 
-type KNote = {
-  id: string; user_id: string; title: string; content: string | null;
-  html_content: string | null; category: string | null;
-  created_at: string; updated_at: string; word_count: number | null;
+type KNote = StudioNote & {
+  user_id: string;
+  content: string | null;
+  created_at: string;
+  word_count: number | null;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
