@@ -220,62 +220,62 @@ export default function KnowledgeStudioPage() {
   const saveLabel = saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Error" : "";
 
   return (
-    <div className={`${themeClass} h-[100dvh] overflow-hidden bg-background text-foreground`}>
-      <main className="grid h-full min-w-0 md:grid-cols-[320px_minmax(0,1fr)]">
+      <div className={`${themeClass} bg-background text-foreground`}>
+        <main className="flex h-[100svh] min-w-0 flex-col md:flex-row">
 
-        {(!isMobile || mobilePane === "list") && (
-          <aside className="flex h-full min-w-0 flex-col border-r border-border/70 bg-background/95">
-            <div className="border-b border-border/70 px-4 pb-4 pt-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Knowledge Studio</p>
-                  <h1 className="mt-1 text-2xl font-semibold text-foreground">Notes</h1>
+          {(!isMobile || mobilePane === "list") && (
+            <aside className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border/70 bg-background/95 md:w-[320px] md:flex-none md:border-b-0 md:border-r">
+              <div className="shrink-0 border-b border-border/70 px-4 pb-4 pt-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Knowledge Studio</p>
+                    <h1 className="mt-1 text-2xl font-semibold text-foreground">Notes</h1>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setShowSettings(true)} aria-label="Settings"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors hover:text-foreground">
+                      <Settings2 className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={createNote}
+                      className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
+                      <Plus className="h-4 w-4" /> New Note
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setShowSettings(true)} aria-label="Settings"
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground hover:text-foreground transition-colors">
-                    <Settings2 className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={createNote}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
-                    <Plus className="h-4 w-4" /> New Note
-                  </button>
+
+                <div className="relative mt-4">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input type="text" placeholder="Search notes…" value={search} onChange={(e) => setSearch(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-border/70 bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary/40" />
+                </div>
+
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {filterCats.map((cat) => (
+                    <button key={cat} type="button" onClick={() => setActiveCat(cat)}
+                      className={`min-h-[36px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        activeCat === cat ? "border-primary/35 bg-primary/10 text-primary" : "border-border/70 text-muted-foreground hover:text-foreground"
+                      }`}>
+                      {cat}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="relative mt-4">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input type="text" placeholder="Search notes…" value={search} onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-border/70 bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/40 transition-colors" />
+              <div ref={listRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 [scrollbar-gutter:stable]"
+                onScroll={() => { if (listRef.current) sessionStorage.setItem(SCROLL_KEY, String(listRef.current.scrollTop)); }}>
+                {filtered.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                    <p className="text-sm">No notes yet.</p>
+                    <button type="button" onClick={createNote} className="mt-3 text-sm font-medium text-primary hover:underline">Create your first note</button>
+                  </div>
+                )}
+                {filtered.map((n) => <NoteCard key={n.id} note={toStudioNote(n)} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
               </div>
-
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {filterCats.map((cat) => (
-                  <button key={cat} type="button" onClick={() => setActiveCat(cat)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px] ${
-                      activeCat === cat ? "border-primary/35 bg-primary/10 text-primary" : "border-border/70 text-muted-foreground hover:text-foreground"
-                    }`}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2"
-              onScroll={() => { if (listRef.current) sessionStorage.setItem(SCROLL_KEY, String(listRef.current.scrollTop)); }}>
-              {filtered.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-                  <p className="text-sm">No notes yet.</p>
-                  <button type="button" onClick={createNote} className="mt-3 text-sm font-medium text-primary hover:underline">Create your first note</button>
-                </div>
-              )}
-              {filtered.map((n) => <NoteCard key={n.id} note={toStudioNote(n)} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
-            </div>
-          </aside>
-        )}
+            </aside>
+          )}
 
           {(!isMobile || mobilePane === "editor") && (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
               {selected ? (
                 <>
                   <div className="shrink-0 border-b border-border/70 px-4 py-3">
@@ -312,19 +312,19 @@ export default function KnowledgeStudioPage() {
                   <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
                     <SmartEditor content={draftHtml} onChange={(html, text) => { setDraftHtml(html); setDraftText(text); }} settings={settings} />
                   </div>
-              </>
-            ) : (
-              <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center text-muted-foreground">
-                <p className="text-lg font-medium">Select a note or create one</p>
-                <button type="button" onClick={createNote}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
-                  <Plus className="h-4 w-4" /> New Note
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
+                </>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+                  <p className="text-lg font-medium">Select a note or create one</p>
+                  <button type="button" onClick={createNote}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
+                    <Plus className="h-4 w-4" /> New Note
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+        </main>
 
       <StudioSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} settings={settings} onChange={updateSettings} />
     </div>

@@ -120,7 +120,7 @@ export function SmartEditor({ content, onChange, settings, placeholder = "Start 
           [&_.note-embed_iframe]:absolute [&_.note-embed_iframe]:inset-0 [&_.note-embed_iframe]:h-full [&_.note-embed_iframe]:w-full [&_.note-embed_iframe]:border-0
           [&_.note-section-label]:mb-2 [&_.note-section-label]:text-[11px] [&_.note-section-label]:font-semibold [&_.note-section-label]:uppercase [&_.note-section-label]:tracking-[0.24em] [&_.note-section-label]:text-muted-foreground
           [&_.note-divider]:my-7 [&_.note-divider]:border-t [&_.note-divider]:border-border/30
-          [&_.note-meta-grid]:grid [&_.note-meta-grid]:gap-4 sm:[&_note-meta-grid]:grid-cols-3
+          [&_.note-meta-grid]:grid [&_.note-meta-grid]:gap-4 sm:[&_.note-meta-grid]:grid-cols-3
           [&_.note-meta-item_p]:mb-0
           [&_.note-placeholder]:text-muted-foreground/60
           [&_.note-thoughts]:italic
