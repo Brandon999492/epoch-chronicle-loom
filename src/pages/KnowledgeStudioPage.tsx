@@ -269,7 +269,7 @@ export default function KnowledgeStudioPage() {
                   <button type="button" onClick={createNote} className="mt-3 text-sm font-medium text-primary hover:underline">Create your first note</button>
                 </div>
               )}
-              {filtered.map((n) => <NoteCard key={n.id} note={n} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
+              {filtered.map((n) => <NoteCard key={n.id} note={toStudioNote(n)} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
             </div>
           </aside>
         )}
