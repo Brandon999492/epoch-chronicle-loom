@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme, type SiteTheme, type SiteFontSize, type SiteDensity } from "@/contexts/ThemeContext";
+import { useTheme, type SiteTheme, type SiteFontSize, type SiteDensity, type SiteFontFamily, type SiteAccentColor } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { motion } from "framer-motion";
-import { Settings, Globe, Type, Bell, Palette, Rows3, SunMedium, MoonStar, SwatchBook } from "lucide-react";
+import { Settings, Globe, Type, Bell, Palette, Rows3, SunMedium, MoonStar, SwatchBook, Upload, X, Sparkles, Image, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -26,25 +26,46 @@ const DENSITY_OPTIONS: Array<{ label: string; value: SiteDensity }> = [
   { label: "Spacious", value: "spacious" },
 ];
 
+const FONT_FAMILY_OPTIONS: Array<{ label: string; value: SiteFontFamily; preview: string }> = [
+  { label: "Sans-serif", value: "default", preview: "Aa" },
+  { label: "Serif", value: "serif", preview: "Aa" },
+  { label: "Monospace", value: "mono", preview: "Aa" },
+  { label: "Rounded", value: "rounded", preview: "Aa" },
+];
+
+const ACCENT_OPTIONS: Array<{ label: string; value: SiteAccentColor; color: string }> = [
+  { label: "Blue", value: "blue", color: "hsl(220 70% 55%)" },
+  { label: "Purple", value: "purple", color: "hsl(270 60% 55%)" },
+  { label: "Amber", value: "amber", color: "hsl(38 92% 50%)" },
+  { label: "Emerald", value: "emerald", color: "hsl(155 60% 45%)" },
+  { label: "Rose", value: "rose", color: "hsl(345 70% 55%)" },
+  { label: "Slate", value: "slate", color: "hsl(215 20% 55%)" },
+];
+
+const FONT_FAMILY_CSS: Record<SiteFontFamily, string> = {
+  default: "font-sans",
+  serif: "font-serif",
+  mono: "font-mono",
+  rounded: "font-sans",
+};
+
 const SettingsPage = () => {
   const { user, loading: authLoading } = useAuth();
-  const { theme, setTheme, fontSize: globalFontSize, setFontSize: setGlobalFontSize, density, setDensity } = useTheme();
+  const {
+    theme, setTheme,
+    fontSize: globalFontSize, setFontSize: setGlobalFontSize,
+    density, setDensity,
+    fontFamily, setFontFamily,
+    accentColor, setAccentColor,
+    wallpaperUrl, setWallpaperUrl,
+  } = useTheme();
   const navigate = useNavigate();
   const [language, setLanguage] = useState("en");
   const [saving, setSaving] = useState(false);
   const [notifications, setNotifications] = useState(true);
-
-  useEffect(() => {
-    if (!authLoading && !user) { navigate("/auth"); return; }
-    if (user) {
-      supabase.from("profiles").select("font_size, preferred_language").eq("user_id", user.id).single()
-        .then(({ data }) => {
-          if (data) {
-            setLanguage(data.preferred_language || "en");
-          }
-        });
-    }
-  }, [user, authLoading, navigate]);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
     if (!user) return;
@@ -52,6 +73,49 @@ const SettingsPage = () => {
     await supabase.from("profiles").update({ font_size: globalFontSize, preferred_language: language }).eq("user_id", user.id);
     setSaving(false);
     toast.success("Settings saved!");
+  };
+
+  const handleWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string;
+      setWallpaperUrl(url);
+      toast.success("Wallpaper applied!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAiWallpaper = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Please describe the wallpaper you want");
+      return;
+    }
+    setGeneratingAi(true);
+    try {
+      const resp = await supabase.functions.invoke("generate-wallpaper", {
+        body: { prompt: aiPrompt.trim() },
+      });
+      if (resp.error) throw resp.error;
+      const data = resp.data;
+      if (data?.imageUrl) {
+        setWallpaperUrl(data.imageUrl);
+        toast.success("AI wallpaper generated and applied!");
+        setAiPrompt("");
+      } else {
+        throw new Error("No image returned");
+      }
+    } catch (err: any) {
+      console.error("AI wallpaper error:", err);
+      toast.error("Failed to generate wallpaper. Try again.");
+    } finally {
+      setGeneratingAi(false);
+    }
   };
 
   if (authLoading) return null;
@@ -92,6 +156,44 @@ const SettingsPage = () => {
                 </div>
               </SettingsCard>
 
+              {/* Accent Color */}
+              <SettingsCard icon={Palette} title="Accent Color">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {ACCENT_OPTIONS.map((o) => (
+                    <button key={o.value} type="button" onClick={() => setAccentColor(o.value)}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all duration-200 ${
+                        accentColor === o.value
+                          ? "border-primary/40 bg-primary/8 shadow-sm"
+                          : "border-border/50 hover:border-border"
+                      }`}>
+                      <div className="w-6 h-6 rounded-full ring-2 ring-offset-2 ring-offset-background transition-all"
+                        style={{
+                          backgroundColor: o.color,
+                          ringColor: accentColor === o.value ? o.color : "transparent",
+                        }} />
+                      <span className="text-[10px] text-muted-foreground">{o.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </SettingsCard>
+
+              {/* Font Family */}
+              <SettingsCard icon={Type} title="Font Style">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {FONT_FAMILY_OPTIONS.map((o) => (
+                    <button key={o.value} type="button" onClick={() => setFontFamily(o.value)}
+                      className={`rounded-xl border px-3 py-3 text-center transition-all duration-200 ${
+                        fontFamily === o.value
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                      }`}>
+                      <span className={`text-lg block mb-1 ${FONT_FAMILY_CSS[o.value]}`}>{o.preview}</span>
+                      <span className="text-[11px] font-medium">{o.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </SettingsCard>
+
               {/* Font Size */}
               <SettingsCard icon={Type} title="Font Size">
                 <div className="grid grid-cols-3 gap-2">
@@ -107,6 +209,65 @@ const SettingsPage = () => {
                   {DENSITY_OPTIONS.map((o) => (
                     <OptionBtn key={o.value} active={density === o.value} label={o.label} onClick={() => setDensity(o.value)} />
                   ))}
+                </div>
+              </SettingsCard>
+
+              {/* Wallpaper */}
+              <SettingsCard icon={Image} title="Background Wallpaper">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleWallpaperUpload}
+                  className="hidden"
+                />
+
+                {/* Current wallpaper preview */}
+                {wallpaperUrl && (
+                  <div className="relative w-full h-32 rounded-xl overflow-hidden border border-border mb-3">
+                    <img src={wallpaperUrl} alt="Current wallpaper" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => { setWallpaperUrl(null); toast.success("Wallpaper removed"); }}
+                      className="absolute top-2 right-2 bg-background/80 hover:bg-background rounded-full p-1.5 backdrop-blur-sm transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-border/50 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:border-border transition-all"
+                  >
+                    <Upload className="h-4 w-4" /> Upload Photo
+                  </button>
+                </div>
+
+                {/* AI Wallpaper Generator */}
+                <div className="border-t border-border/30 pt-3">
+                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3 text-primary" /> Generate with AI
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="e.g. Ancient Roman ruins at sunset..."
+                      className="flex-1 h-10 rounded-xl border border-border/50 bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/30 placeholder:text-muted-foreground/60"
+                      onKeyDown={(e) => e.key === "Enter" && handleAiWallpaper()}
+                      disabled={generatingAi}
+                    />
+                    <button
+                      onClick={handleAiWallpaper}
+                      disabled={generatingAi || !aiPrompt.trim()}
+                      className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {generatingAi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      {generatingAi ? "Generating…" : "Generate"}
+                    </button>
+                  </div>
                 </div>
               </SettingsCard>
 
