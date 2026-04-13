@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Star, Calendar, MapPin, ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { proxyImageUrl } from "@/lib/imageUtils";
 
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
 
@@ -95,7 +96,7 @@ export function FeaturedEvents() {
               >
                 {event.image_url ? (
                   <div className="relative h-44 overflow-hidden">
-                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                    <img src={proxyImageUrl(event.image_url)} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                     <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
                     {event.significance && event.significance >= 8 && (
                       <div className="absolute top-3 right-3">
