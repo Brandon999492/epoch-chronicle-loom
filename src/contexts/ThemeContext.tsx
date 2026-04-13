@@ -78,14 +78,26 @@ function applyAccentColor(color: SiteAccentColor) {
 }
 
 function applyWallpaper(url: string | null) {
-  const el = document.getElementById("site-wallpaper");
   const root = document.documentElement;
   if (url) root.classList.add("has-wallpaper");
   else root.classList.remove("has-wallpaper");
 
-  if (!el) return;
+  // Try existing element first, create if missing
+  let el = document.getElementById("site-wallpaper");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "site-wallpaper";
+    Object.assign(el.style, {
+      position: "fixed", inset: "0", zIndex: "0",
+      backgroundSize: "cover", backgroundPosition: "center",
+      backgroundRepeat: "no-repeat", opacity: "0.18",
+      pointerEvents: "none", display: "none",
+    });
+    document.body.prepend(el);
+  }
   if (url) {
-    el.style.backgroundImage = `url(${url})`;
+    el.style.backgroundImage = `url("${url}")`;
+    el.style.opacity = "0.18";
     el.style.display = "block";
   } else {
     el.style.backgroundImage = "";
@@ -191,8 +203,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const FALLBACK: ThemeContextValue = {
+  theme: "dark", setTheme: () => {},
+  fontSize: "medium", setFontSize: () => {},
+  density: "default", setDensity: () => {},
+  fontFamily: "default", setFontFamily: () => {},
+  accentColor: "blue", setAccentColor: () => {},
+  wallpaperUrl: null, setWallpaperUrl: () => {},
+};
+
 export function useTheme() {
   const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
-  return ctx;
+  return ctx ?? FALLBACK;
 }
