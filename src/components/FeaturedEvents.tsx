@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Star, Calendar, MapPin, ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { proxyImageUrl } from "@/lib/imageUtils";
+import { historyImageUrl } from "@/lib/imageUtils";
 
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
 
@@ -94,23 +94,22 @@ export function FeaturedEvents() {
                 to={`/event/${event.id}`}
                 className="card-premium block overflow-hidden h-full group"
               >
-                {event.image_url ? (
-                  <div className="relative h-44 overflow-hidden">
-                    <img src={proxyImageUrl(event.image_url)} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
-                    {event.significance && event.significance >= 8 && (
-                      <div className="absolute top-3 right-3">
-                        <Badge className="bg-primary/90 text-primary-foreground text-[10px] shadow-glow">
-                          <Star className="h-2.5 w-2.5 mr-0.5 fill-current" />Major
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-28 bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
-                    <Star className="h-8 w-8 text-primary/20 animate-float" />
-                  </div>
-                )}
+                <div className="relative h-44 overflow-hidden">
+                  <img
+                    src={historyImageUrl(event.image_url, event.title) ?? ""}
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                  {event.significance && event.significance >= 8 && (
+                    <div className="absolute top-3 right-3">
+                      <Badge className="bg-primary/90 text-primary-foreground text-[10px] shadow-glow">
+                        <Star className="h-2.5 w-2.5 mr-0.5 fill-current" />Major
+                      </Badge>
+                    </div>
+                  )}
+                </div>
                 <div className="p-5">
                   <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2.5 text-base">
                     {event.title}
