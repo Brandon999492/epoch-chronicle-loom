@@ -129,7 +129,7 @@ export default function KnowledgeStudioPage() {
   useEffect(() => {
     if (!selected) return;
     const snap = JSON.stringify({ t: draftTitle.trim() || DEFAULT_NOTE_TITLE, h: draftHtml.trim(), x: draftText.trim(), c: normalizeCategory(draftCategory) });
-    const curHtml = selected.html_content?.trim() ? normalizeStoredHtml(selected.html_content) : plainTextToEditorHtml(selected.content || "");
+    const curHtml = normalizeStoredHtml(selected.html_content);
     const curSnap = JSON.stringify({ t: (selected.title || DEFAULT_NOTE_TITLE).trim(), h: curHtml.trim(), x: (selected.content || htmlToPlainText(curHtml)).trim(), c: normalizeCategory(selected.category) });
     if (snap === curSnap) return;
 
