@@ -166,10 +166,12 @@ const SettingsPage = () => {
                           ? "border-primary/40 bg-primary/8 shadow-sm"
                           : "border-border/50 hover:border-border"
                       }`}>
-                      <div className="w-6 h-6 rounded-full ring-2 ring-offset-2 ring-offset-background transition-all"
+                      <div className={`w-6 h-6 rounded-full transition-all ${
+                        accentColor === o.value ? "ring-2 ring-offset-2 ring-offset-background" : ""
+                      }`}
                         style={{
                           backgroundColor: o.color,
-                          ringColor: accentColor === o.value ? o.color : "transparent",
+                          ...(accentColor === o.value ? { boxShadow: `0 0 0 2px var(--background), 0 0 0 4px ${o.color}` } : {}),
                         }} />
                       <span className="text-[10px] text-muted-foreground">{o.label}</span>
                     </button>
