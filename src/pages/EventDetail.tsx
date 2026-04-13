@@ -11,6 +11,7 @@ import { categoryColors } from "@/data/types";
 import ImageSlideshow from "@/components/ImageSlideshow";
 import { EventRecommendations } from "@/components/EventRecommendations";
 import { EventActions } from "@/components/EventActions";
+import { proxyImageUrl } from "@/lib/imageUtils";
 
 const isLegacyStaticId = (s: string) => /^[a-z]{1,6}\d{1,3}$/i.test(s);
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
@@ -250,7 +251,7 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
               transition={{ duration: 0.6 }}
               className="rounded-2xl overflow-hidden mb-10 border border-border relative shadow-dramatic"
             >
-              <img src={event.image_url} alt={event.title} className="w-full max-h-[420px] object-cover" />
+              <img src={proxyImageUrl(event.image_url)} alt={event.title} className="w-full max-h-[420px] object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
               {event.significance && event.significance >= 8 && (
                 <div className="absolute top-4 right-4">
@@ -374,7 +375,7 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
                     <div key={em.media.id} className="card-premium overflow-hidden group">
                       <div className="overflow-hidden">
                         <img
-                          src={em.media.thumbnail_url || em.media.url}
+                          src={proxyImageUrl(em.media.thumbnail_url || em.media.url)}
                           alt={em.media.title || ""}
                           className="w-full aspect-[16/10] object-cover group-hover:scale-105 transition-transform duration-500"
                         />
@@ -404,7 +405,7 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
                       <Link to={`/event/${re.id}`} className="card-premium overflow-hidden group block">
                         {re.image_url && (
                           <div className="overflow-hidden">
-                            <img src={re.image_url} alt="" className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <img src={proxyImageUrl(re.image_url)} alt="" className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" />
                           </div>
                         )}
                         <div className="p-4">
