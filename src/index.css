@@ -178,12 +178,13 @@
 
   /* Premium card hover effect */
   .card-premium {
-    @apply bg-card border border-border rounded-xl transition-all duration-300;
+    @apply bg-card border border-border/60 rounded-xl transition-all duration-300;
+    box-shadow: var(--shadow-soft);
   }
   .card-premium:hover {
     box-shadow: var(--shadow-card-hover);
-    border-color: hsl(var(--primary) / 0.3);
-    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.25);
+    transform: translateY(-1px);
   }
 
   /* Skeleton shimmer */
