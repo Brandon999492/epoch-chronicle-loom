@@ -227,9 +227,15 @@ export default function KnowledgeStudioPage() {
             <aside className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border/70 bg-background/95 md:w-[320px] md:flex-none md:border-b-0 md:border-r">
               <div className="shrink-0 border-b border-border/70 px-4 pb-4 pt-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Knowledge Studio</p>
-                    <h1 className="mt-1 text-2xl font-semibold text-foreground">Notes</h1>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => navigate("/")} aria-label="Back to home"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors hover:text-foreground">
+                      <ArrowLeft className="h-4 w-4" />
+                    </button>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Knowledge Studio</p>
+                      <h1 className="mt-1 text-2xl font-semibold text-foreground">Notes</h1>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => setShowSettings(true)} aria-label="Settings"
