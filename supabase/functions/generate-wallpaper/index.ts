@@ -27,69 +27,30 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image-preview",
+        model: "google/gemini-2.5-flash-image",
         messages: [
           {
             role: "user",
-            content: `Generate a beautiful, high-quality background wallpaper image. The image should be atmospheric, slightly blurred/soft, and suitable as a website background (not too busy, good for text overlay). Style: ${prompt}. Make it 1920x1080 resolution, cinematic and elegant.`,
+            content: `Create an elegant website wallpaper background for a history app. Keep it atmospheric, readable behind text, cinematic, soft, and not too busy. Prompt: ${prompt}`,
           },
         ],
+        modalities: ["image", "text"],
       }),
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Credits required. Please add funds." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      return new Response(JSON.stringify({ error: "AI generation failed" }), {
-        status: 500,
+      return new Response(JSON.stringify({ error: text || "AI generation failed" }), {
+        status: response.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await response.json();
-    
-    // Extract image from the response - Gemini image models return inline_data
-    const content = data.choices?.[0]?.message?.content;
-    let imageUrl = null;
-
-    // Check for parts with inline_data (Gemini image response format)
-    const parts = data.choices?.[0]?.message?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inline_data) {
-          imageUrl = `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
-          break;
-        }
-      }
-    }
-
-    // Fallback: check if content contains a base64 image or URL
-    if (!imageUrl && content) {
-      // Check for markdown image
-      const mdMatch = content.match(/!\[.*?\]\((.*?)\)/);
-      if (mdMatch) {
-        imageUrl = mdMatch[1];
-      }
-      // Check if content itself is a data URL
-      else if (content.startsWith("data:image")) {
-        imageUrl = content;
-      }
-    }
+    const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
 
     if (!imageUrl) {
-      return new Response(JSON.stringify({ error: "Could not generate image. Try a different prompt." }), {
+      return new Response(JSON.stringify({ error: "No image was returned" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -99,7 +60,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("generate-wallpaper error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
