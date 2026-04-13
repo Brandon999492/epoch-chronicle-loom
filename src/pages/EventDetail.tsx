@@ -11,7 +11,7 @@ import { categoryColors } from "@/data/types";
 import ImageSlideshow from "@/components/ImageSlideshow";
 import { EventRecommendations } from "@/components/EventRecommendations";
 import { EventActions } from "@/components/EventActions";
-import { proxyImageUrl } from "@/lib/imageUtils";
+import { historyImageUrl, proxyImageUrl } from "@/lib/imageUtils";
 
 const isLegacyStaticId = (s: string) => /^[a-z]{1,6}\d{1,3}$/i.test(s);
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/history-api`;
@@ -244,24 +244,27 @@ const DbEventDetail = ({ eventId }: { eventId: string }) => {
 
         {/* Hero Image - Full Width */}
         <AnimatePresence>
-          {event.image_url && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              className="rounded-2xl overflow-hidden mb-10 border border-border relative shadow-dramatic"
-            >
-              <img src={proxyImageUrl(event.image_url)} alt={event.title} className="w-full max-h-[420px] object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-              {event.significance && event.significance >= 8 && (
-                <div className="absolute top-4 right-4">
-                  <Badge className="bg-primary text-primary-foreground shadow-glow">
-                    <Star className="h-3 w-3 mr-1 fill-current" />Major Event
-                  </Badge>
-                </div>
-              )}
-            </motion.div>
-          )}
+          {(() => {
+            const heroImg = historyImageUrl(event.image_url, event.title);
+            return heroImg ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6 }}
+                className="rounded-2xl overflow-hidden mb-10 border border-border relative shadow-dramatic"
+              >
+                <img src={heroImg} alt={event.title} className="w-full max-h-[420px] object-cover" onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+                {event.significance && event.significance >= 8 && (
+                  <div className="absolute top-4 right-4">
+                    <Badge className="bg-primary text-primary-foreground shadow-glow">
+                      <Star className="h-3 w-3 mr-1 fill-current" />Major Event
+                    </Badge>
+                  </div>
+                )}
+              </motion.div>
+            ) : null;
+          })()}
         </AnimatePresence>
 
         {/* Category & Meta Badges */}

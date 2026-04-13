@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { wikiImageUrl } from "@/lib/imageUtils";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -218,11 +219,9 @@ const ExplorePage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {featured.slice(0, 9).map((event: any) => (
                   <Link key={event.id} to={`/event/${event.id}`} className="card-premium overflow-hidden group block">
-                    {event.image_url && (
-                      <div className="overflow-hidden">
-                        <img src={event.image_url} alt="" className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-700" />
-                      </div>
-                    )}
+                    <div className="overflow-hidden">
+                      <img src={event.image_url || wikiImageUrl(event.title)} alt="" className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    </div>
                     <div className="p-4">
                       <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">{event.title}</h3>
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
