@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Brain, Loader2, Plus, Search, Settings2, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { ArrowLeft, Brain, ChevronLeft, Loader2, Plus, Search, Settings2, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -217,135 +217,158 @@ export default function KnowledgeStudioPage() {
 
   if (authLoading) return <div className="min-h-screen bg-background" />;
 
-  const saveLabel = saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Error" : "";
+  const saveLabel = saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved ✓" : saveState === "error" ? "Error" : "";
 
   return (
-      <div className={`${themeClass} bg-background text-foreground`}>
-        <main className="flex h-[100svh] min-w-0 flex-col md:flex-row">
+    <div className={`${themeClass} bg-background text-foreground transition-colors duration-300`}>
+      <main className="flex h-[100svh] min-w-0 flex-col md:flex-row">
 
-          {(!isMobile || mobilePane === "list") && (
-            <aside className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border/70 bg-background/95 md:w-[320px] md:flex-none md:border-b-0 md:border-r">
-              <div className="shrink-0 border-b border-border/70 px-4 pb-4 pt-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => navigate("/")} aria-label="Back to home"
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors hover:text-foreground">
-                      <ArrowLeft className="h-4 w-4" />
-                    </button>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Knowledge Studio</p>
-                      <h1 className="mt-1 text-2xl font-semibold text-foreground">Notes</h1>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => setShowSettings(true)} aria-label="Settings"
-                      className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors hover:text-foreground">
-                      <Settings2 className="h-4 w-4" />
-                    </button>
-                    <button type="button" onClick={createNote}
-                      className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
-                      <Plus className="h-4 w-4" /> New Note
-                    </button>
-                  </div>
+        {/* ── SIDEBAR ── */}
+        {(!isMobile || mobilePane === "list") && (
+          <aside className="studio-animate-fade flex min-h-0 min-w-0 flex-1 flex-col border-b border-border/50 bg-background md:w-[300px] md:flex-none md:border-b-0 md:border-r">
+            {/* Header */}
+            <div className="shrink-0 px-5 pb-4 pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <button type="button" onClick={() => navigate("/")} aria-label="Back to home"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <h1 className="text-lg font-semibold text-foreground font-body">Notes</h1>
                 </div>
-
-                <div className="relative mt-4">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input type="text" placeholder="Search notes…" value={search} onChange={(e) => setSearch(e.target.value)}
-                    className="h-11 w-full rounded-xl border border-border/70 bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-primary/40" />
-                </div>
-
-                <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                  {filterCats.map((cat) => (
-                    <button key={cat} type="button" onClick={() => setActiveCat(cat)}
-                      className={`min-h-[36px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                        activeCat === cat ? "border-primary/35 bg-primary/10 text-primary" : "border-border/70 text-muted-foreground hover:text-foreground"
-                      }`}>
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div ref={listRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 [scrollbar-gutter:stable]"
-                onScroll={() => { if (listRef.current) sessionStorage.setItem(SCROLL_KEY, String(listRef.current.scrollTop)); }}>
-                {filtered.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-                    <p className="text-sm">No notes yet.</p>
-                    <button type="button" onClick={createNote} className="mt-3 text-sm font-medium text-primary hover:underline">Create your first note</button>
-                  </div>
-                )}
-                {filtered.map((n) => <NoteCard key={n.id} note={toStudioNote(n)} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
-              </div>
-            </aside>
-          )}
-
-          {(!isMobile || mobilePane === "editor") && (
-            <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
-              {selected ? (
-                <>
-                  <div className="shrink-0 border-b border-border/70 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      {isMobile && (
-                        <button type="button" onClick={() => { setMobilePane("list"); setSelectedId(null); }}
-                          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
-                          <ArrowLeft className="h-5 w-5" />
-                        </button>
-                      )}
-                      <input type="text" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)}
-                        placeholder="Title or paste YouTube link…"
-                        className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-foreground placeholder:text-muted-foreground/50 outline-none" />
-                      {saveLabel && <span className="shrink-0 text-xs text-muted-foreground">{saveLabel}</span>}
-                      <button type="button" onClick={deleteNote} aria-label="Delete note"
-                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    <p className="mt-2 text-xs text-muted-foreground/60">Start writing or use AI to generate a note from a topic or video.</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <AiBtn icon={Sparkles} label="Improve" tooltip="Fix grammar and improve clarity" loading={aiAction === "improve"} disabled={!!aiAction} onClick={() => runAi("improve")} />
-                      <AiBtn icon={Brain} label="Generate" tooltip="Create a structured note from topic or video" loading={aiAction === "generate"} disabled={!!aiAction} onClick={() => runAi("generate")} />
-                      <AiBtn icon={Wand2} label="Magic" tooltip="Full auto — structured note from short topic or video" loading={aiAction === "magic"} disabled={!!aiAction} primary onClick={() => runAi("magic")} />
-
-                      <select value={draftCategory} onChange={(e) => setDraftCategory(e.target.value)}
-                        className="h-9 rounded-xl border border-border/70 bg-background px-3 text-xs text-foreground outline-none md:ml-auto">
-                        {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-                    <SmartEditor content={draftHtml} onChange={(html, text) => { setDraftHtml(html); setDraftText(text); }} settings={settings} />
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center text-muted-foreground">
-                  <p className="text-lg font-medium">Select a note or create one</p>
+                <div className="flex items-center gap-1.5">
+                  <button type="button" onClick={() => setShowSettings(true)} aria-label="Settings"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                    <Settings2 className="h-[18px] w-[18px]" />
+                  </button>
                   <button type="button" onClick={createNote}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
-                    <Plus className="h-4 w-4" /> New Note
+                    className="flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-all duration-200 hover:opacity-90 active:scale-[0.97]">
+                    <Plus className="h-4 w-4" /> New
+                  </button>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="relative mt-4">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
+                <input type="text" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-border/60 bg-secondary/50 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/30 focus:bg-background" />
+              </div>
+
+              {/* Categories */}
+              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {filterCats.map((cat) => (
+                  <button key={cat} type="button" onClick={() => setActiveCat(cat)}
+                    className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-all duration-200 ${
+                      activeCat === cat
+                        ? "bg-primary/12 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes list */}
+            <div ref={listRef} className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-4 [scrollbar-gutter:stable]"
+              onScroll={() => { if (listRef.current) sessionStorage.setItem(SCROLL_KEY, String(listRef.current.scrollTop)); }}>
+              {filtered.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <p className="text-sm text-muted-foreground/70">No notes yet</p>
+                  <button type="button" onClick={createNote}
+                    className="mt-3 text-sm font-medium text-primary transition-opacity hover:opacity-70">
+                    Create your first note
                   </button>
                 </div>
               )}
-            </section>
-          )}
-        </main>
+              {filtered.map((n, i) => (
+                <div key={n.id} className="studio-animate-fade" style={{ animationDelay: `${Math.min(i * 30, 150)}ms` }}>
+                  <NoteCard note={toStudioNote(n)} isSelected={n.id === selectedId} onClick={() => openNote(n)} />
+                </div>
+              ))}
+            </div>
+          </aside>
+        )}
+
+        {/* ── EDITOR ── */}
+        {(!isMobile || mobilePane === "editor") && (
+          <section className="studio-animate-fade flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+            {selected ? (
+              <>
+                {/* Editor toolbar */}
+                <div className="shrink-0 border-b border-border/40 px-4 py-3 md:px-6">
+                  <div className="flex items-center gap-2">
+                    {isMobile && (
+                      <button type="button" onClick={() => { setMobilePane("list"); setSelectedId(null); }}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground">
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                    )}
+                    <input type="text" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)}
+                      placeholder="Title or YouTube link…"
+                      className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-foreground placeholder:text-muted-foreground/40 outline-none" />
+                    {saveLabel && (
+                      <span className={`shrink-0 text-xs transition-opacity duration-300 ${saveState === "saved" ? "text-green-600/70" : "text-muted-foreground/60"}`}>
+                        {saveLabel}
+                      </span>
+                    )}
+                    <button type="button" onClick={deleteNote} aria-label="Delete note"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground/50 transition-colors hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* AI + category row */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <AiBtn icon={Sparkles} label="Improve" loading={aiAction === "improve"} disabled={!!aiAction} onClick={() => runAi("improve")} />
+                    <AiBtn icon={Brain} label="Generate" loading={aiAction === "generate"} disabled={!!aiAction} onClick={() => runAi("generate")} />
+                    <AiBtn icon={Wand2} label="Magic" loading={aiAction === "magic"} disabled={!!aiAction} primary onClick={() => runAi("magic")} />
+
+                    <select value={draftCategory} onChange={(e) => setDraftCategory(e.target.value)}
+                      className="ml-auto h-8 rounded-lg border border-border/50 bg-transparent px-2.5 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground">
+                      {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Editor body */}
+                <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+                  <SmartEditor content={draftHtml} onChange={(html, text) => { setDraftHtml(html); setDraftText(text); }} settings={settings} />
+                </div>
+              </>
+            ) : (
+              /* Empty state */
+              <div className="flex flex-1 flex-col items-center justify-center gap-5 px-8 text-center studio-animate-fade">
+                <div className="space-y-2">
+                  <p className="text-lg font-medium text-foreground/80">Select a note or create a new one</p>
+                  <p className="text-sm text-muted-foreground/60">Your notes are saved automatically</p>
+                </div>
+                <button type="button" onClick={createNote}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-all duration-200 hover:opacity-90 active:scale-[0.97]">
+                  <Plus className="h-4 w-4" /> New Note
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+      </main>
 
       <StudioSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} settings={settings} onChange={updateSettings} />
     </div>
   );
 }
 
-function AiBtn({ icon: Icon, label, tooltip, loading, disabled, primary, onClick }: {
-  icon: typeof Sparkles; label: string; tooltip: string; loading: boolean; disabled: boolean; primary?: boolean; onClick: () => void;
+/* ── Small AI action button ── */
+function AiBtn({ icon: Icon, label, loading, disabled, primary, onClick }: {
+  icon: typeof Sparkles; label: string; loading: boolean; disabled: boolean; primary?: boolean; onClick: () => void;
 }) {
   return (
-    <button type="button" title={tooltip} disabled={disabled} onClick={onClick}
-      className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
+    <button type="button" disabled={disabled} onClick={onClick}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-medium transition-all duration-200 disabled:opacity-40 active:scale-[0.97] ${
         primary
-          ? "border-primary bg-primary text-primary-foreground hover:opacity-90"
-          : "border-border/70 bg-card text-foreground hover:border-primary/30"
+          ? "border-primary/30 bg-primary text-primary-foreground hover:opacity-90"
+          : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
       }`}>
       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
       {label}
