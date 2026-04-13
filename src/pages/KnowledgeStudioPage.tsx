@@ -1,449 +1,347 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Brain, Loader2, Plus, Search, Settings2, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/studio/NoteCard";
 import { SmartEditor, type StudioSettings } from "@/components/studio/SmartEditor";
 import { StudioSettingsPanel } from "@/components/studio/StudioSettings";
-import { AnimatePresence } from "framer-motion";
-import {
-  Plus, Search, Pin, Heart, Trash2, Filter, BookOpen, ArrowLeft, Loader2,
-  Sparkles, Settings, MoreVertical, Brain
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-const CATEGORIES = [
-  "Ice Age", "Space", "Serial Killers", "Ancient Egypt", "Ancient Greece",
-  "Royal Family", "Dinosaurs", "Earth History", "Extinction Events", "American History",
-];
-
-const STRUCTURED_TEMPLATE_HTML = `
-<h1>Untitled Note</h1>
-<p><strong>Write a one-line headline…</strong></p>
-<hr/>
-<div class="section-label">Summary</div>
-<p style="color:hsl(var(--muted-foreground))">Write what you learned…</p>
-<hr/>
-<div style="display:flex;gap:24px;flex-wrap:wrap;margin:16px 0">
-  <div><span class="section-label">Year</span><p>—</p></div>
-  <div><span class="section-label">Timeline Period</span><p>—</p></div>
-  <div><span class="section-label">Category</span><p>—</p></div>
-</div>
-<hr/>
-<div class="section-label">Key Points</div>
-<ul><li>Point 1</li><li>Point 2</li><li>Point 3</li></ul>
-<hr/>
-<div class="section-label">Detailed Notes</div>
-<p style="color:hsl(var(--muted-foreground))">Write detailed notes here…</p>
-<hr/>
-<div class="section-label">My Thoughts</div>
-<p style="color:hsl(var(--muted-foreground));font-style:italic">Add your thoughts…</p>
-`.trim();
+import {
+  buildStructuredBodyHtml, buildStructuredBodyPlainText, createNoteBodyHtml,
+  createNoteBodyPlainText, DEFAULT_CATEGORY, DEFAULT_NOTE_TITLE, extractMediaMarkup,
+  htmlToPlainText, isYouTubeUrl, MAGIC_INPUT_LIMIT, normalizeCategory, normalizeStoredHtml,
+  plainTextToEditorHtml, STUDIO_CATEGORIES, type StudioStructuredNote,
+} from "@/components/studio/studio-note-utils";
 
 type KNote = {
-  id: string; user_id: string; title: string; content: string | null; html_content: string | null;
-  category: string | null; tags: string[] | null; color_theme: string | null;
-  linked_year: number | null; linked_era: string | null; linked_event_id: string | null;
-  media_urls: string[] | null; word_count: number | null;
-  is_pinned: boolean | null; is_favorite: boolean | null; is_public: boolean | null;
-  created_at: string; updated_at: string;
+  id: string; user_id: string; title: string; content: string | null;
+  html_content: string | null; category: string | null;
+  created_at: string; updated_at: string; word_count: number | null;
 };
 
-const DEFAULT_SETTINGS: StudioSettings = { fontSize: "medium", readingWidth: "medium", editorMode: "simple", animations: true };
+type SaveState = "idle" | "saving" | "saved" | "error";
+type MobilePane = "list" | "editor";
+type AiAction = "improve" | "generate" | "magic";
 
-const KnowledgeStudioPage = () => {
+const SETTINGS_KEY = "knowledge-studio-settings-v3";
+const SELECTED_KEY = "knowledge-studio-selected-note";
+const SCROLL_KEY = "knowledge-studio-list-scroll";
+const NOTE_COLS = "id, user_id, title, content, html_content, category, created_at, updated_at, word_count";
+
+const DEFAULT_SETTINGS: StudioSettings = { fontSize: "medium", readingWidth: "medium", theme: "warm" };
+
+function countWords(text: string) { return text.trim().split(/\s+/).filter(Boolean).length; }
+
+export default function KnowledgeStudioPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [notes, setNotes] = useState<KNote[]>([]);
-  const [selected, setSelected] = useState<KNote | null>(null);
-  const [title, setTitle] = useState("");
-  const [htmlContent, setHtmlContent] = useState("");
-  const [plainContent, setPlainContent] = useState("");
-  const [category, setCategory] = useState("general");
-  const [linkedYear, setLinkedYear] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
-  const [searchQ, setSearchQ] = useState("");
-  const [filterCat, setFilterCat] = useState<string>("all");
-  const [saving, setSaving] = useState(false);
-  const [showMeta, setShowMeta] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showMobileActions, setShowMobileActions] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const restoredRef = useRef(false);
 
+  const [notes, setNotes] = useState<KNote[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState(DEFAULT_NOTE_TITLE);
+  const [draftHtml, setDraftHtml] = useState(createNoteBodyHtml());
+  const [draftText, setDraftText] = useState(createNoteBodyPlainText());
+  const [draftCategory, setDraftCategory] = useState(DEFAULT_CATEGORY);
+  const [search, setSearch] = useState("");
+  const [activeCat, setActiveCat] = useState("All");
+  const [showSettings, setShowSettings] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [aiAction, setAiAction] = useState<AiAction | null>(null);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("list");
   const [settings, setSettings] = useState<StudioSettings>(() => {
-    try {
-      const saved = localStorage.getItem("studio-settings");
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
-    } catch { return DEFAULT_SETTINGS; }
+    try { const s = localStorage.getItem(SETTINGS_KEY); return s ? { ...DEFAULT_SETTINGS, ...JSON.parse(s) } : DEFAULT_SETTINGS; }
+    catch { return DEFAULT_SETTINGS; }
   });
 
-  const updateSettings = (s: StudioSettings) => {
-    setSettings(s);
-    localStorage.setItem("studio-settings", JSON.stringify(s));
-  };
+  const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
 
-  useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [user, authLoading, navigate]);
+  const allCategories = useMemo(() => {
+    const set = new Set([DEFAULT_CATEGORY, ...STUDIO_CATEGORIES.map(normalizeCategory), ...notes.map((n) => normalizeCategory(n.category)), normalizeCategory(draftCategory)]);
+    return Array.from(set).sort((a, b) => a === DEFAULT_CATEGORY ? -1 : b === DEFAULT_CATEGORY ? 1 : a.localeCompare(b));
+  }, [draftCategory, notes]);
+
+  const filterCats = useMemo(() => ["All", ...allCategories], [allCategories]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return notes.filter((n) => {
+      if (activeCat !== "All" && normalizeCategory(n.category) !== activeCat) return false;
+      if (!q) return true;
+      return [n.title, n.content || "", normalizeCategory(n.category)].join(" ").toLowerCase().includes(q);
+    });
+  }, [activeCat, notes, search]);
+
+  const themeClass = settings.theme === "light" ? "studio-theme-light" : settings.theme === "dark" ? "studio-theme-dark" : "studio-theme-warm";
+
+  const loadDraft = useCallback((note: KNote) => {
+    const html = note.html_content?.trim() ? normalizeStoredHtml(note.html_content) : plainTextToEditorHtml(note.content || "");
+    setDraftTitle(note.title || DEFAULT_NOTE_TITLE);
+    setDraftHtml(html);
+    setDraftText((note.content || htmlToPlainText(html)).trim());
+    setDraftCategory(normalizeCategory(note.category));
+    setSaveState("idle");
+  }, []);
+
+  const updateSettings = useCallback((next: StudioSettings) => {
+    setSettings(next);
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  }, []);
 
   const fetchNotes = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("knowledge_notes")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("is_pinned", { ascending: false })
-      .order("updated_at", { ascending: false });
-    if (data) setNotes(data as KNote[]);
+    const { data, error } = await supabase.from("knowledge_notes").select(NOTE_COLS).eq("user_id", user.id).order("updated_at", { ascending: false });
+    if (error) { toast.error("Could not load notes."); return; }
+    setNotes((data as KNote[] | null) ?? []);
   }, [user]);
 
-  useEffect(() => { fetchNotes(); }, [fetchNotes]);
+  useEffect(() => { if (!authLoading && !user) navigate("/auth"); }, [authLoading, navigate, user]);
+  useEffect(() => { if (user) void fetchNotes(); }, [fetchNotes, user]);
 
-  const createNote = async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from("knowledge_notes")
-      .insert({ user_id: user.id, title: "Untitled Note", content: "", html_content: STRUCTURED_TEMPLATE_HTML, category: "general" })
-      .select()
-      .single();
-    if (data) {
-      setNotes((prev) => [data as KNote, ...prev]);
-      selectNote(data as KNote);
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node) return;
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) requestAnimationFrame(() => { node.scrollTop = Number(saved); });
+  }, [filtered.length, mobilePane]);
+
+  useEffect(() => {
+    if (!notes.length) { if (!isMobile) setSelectedId(null); return; }
+    if (selectedId && notes.some((n) => n.id === selectedId)) return;
+    if (!restoredRef.current) {
+      restoredRef.current = true;
+      const stored = localStorage.getItem(SELECTED_KEY);
+      if (stored && notes.some((n) => n.id === stored)) { setSelectedId(stored); if (!isMobile) setMobilePane("editor"); return; }
     }
-    if (error) toast.error("Failed to create note");
-  };
+    if (!isMobile) { setSelectedId(notes[0].id); setMobilePane("editor"); }
+  }, [isMobile, notes, selectedId]);
 
-  const selectNote = (n: KNote) => {
-    setSelected(n); setTitle(n.title); setHtmlContent(n.html_content || n.content || "");
-    setPlainContent(n.content || ""); setCategory(n.category || "general");
-    setLinkedYear(n.linked_year?.toString() || "");
-    setTagsInput((n.tags || []).join(", ")); setShowMeta(false); setShowMobileActions(false);
-  };
+  useEffect(() => { if (selectedId) localStorage.setItem(SELECTED_KEY, selectedId); else localStorage.removeItem(SELECTED_KEY); }, [selectedId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (selected) loadDraft(selected); }, [selected?.id]);
+  useEffect(() => { if (!isMobile && selectedId) setMobilePane("editor"); if (isMobile && !selectedId) setMobilePane("list"); }, [isMobile, selectedId]);
 
-  // AI: Generate structured note from title/topic
-  const generateForCurrent = async () => {
-    if (!selected) return;
-    const topic = title.trim() || plainContent.trim().slice(0, 200);
-    if (!topic || topic === "Untitled Note") { toast.error("Enter a title or topic first"); return; }
-    setGenerating(true);
-    try {
-      const isYt = topic.match(/(?:youtu\.be\/|v=)([^&?]+)/);
-      const action = isYt ? "youtube_structured" : "generate_structured_note";
-      const body = isYt ? { action, url: topic } : { action, text: topic };
-      const { data, error } = await supabase.functions.invoke("knowledge-ai", { body });
-      if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
-      const s = data.structured;
-      if (!s) { toast.error("AI did not return data"); return; }
-
-      const videoEmbed = data.videoId
-        ? `<div style="position:relative;padding-bottom:56.25%;height:0;margin-top:32px;border-radius:12px;overflow:hidden"><iframe src="https://www.youtube.com/embed/${data.videoId}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allowfullscreen></iframe></div>`
-        : "";
-      const html = buildStructuredHtml(s, videoEmbed);
-      const plain = buildStructuredPlain(s);
-
-      setTitle(s.title || title); setHtmlContent(html); setPlainContent(plain);
-      if (s.category) setCategory(s.category);
-      if (s.year) setLinkedYear(s.year);
-      if (s.tags) setTagsInput((s.tags || []).join(", "));
-      toast.success("Note generated!");
-    } catch (e: any) {
-      toast.error(e.message || "AI generation failed");
-    } finally { setGenerating(false); }
-  };
-
-  // AI: Improve note (grammar + clarity)
-  const improveNote = async () => {
-    if (!selected || !plainContent.trim()) { toast.error("Write something first"); return; }
-    setGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("knowledge-ai", { body: { action: "grammar", text: plainContent } });
-      if (error) throw error;
-      if (data?.result) {
-        setHtmlContent(data.result.replace(/\n/g, "<br/>"));
-        setPlainContent(data.result);
-        toast.success("Note improved!");
-      }
-    } catch (e: any) {
-      toast.error(e.message || "AI failed");
-    } finally { setGenerating(false); }
-  };
-
-  // Autosave
   useEffect(() => {
     if (!selected) return;
-    const timer = setTimeout(async () => {
-      setSaving(true);
-      const wc = plainContent.trim().split(/\s+/).filter(Boolean).length;
-      const tags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
-      await supabase.from("knowledge_notes").update({
-        title, content: plainContent, html_content: htmlContent,
-        category,
-        linked_year: linkedYear ? parseInt(linkedYear) : null,
-        tags, word_count: wc,
-      }).eq("id", selected.id);
-      setSaving(false);
-      fetchNotes();
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [title, htmlContent, plainContent, category, linkedYear, tagsInput]);
+    const snap = JSON.stringify({ t: draftTitle.trim() || DEFAULT_NOTE_TITLE, h: draftHtml.trim(), x: draftText.trim(), c: normalizeCategory(draftCategory) });
+    const curHtml = selected.html_content?.trim() ? normalizeStoredHtml(selected.html_content) : plainTextToEditorHtml(selected.content || "");
+    const curSnap = JSON.stringify({ t: (selected.title || DEFAULT_NOTE_TITLE).trim(), h: curHtml.trim(), x: (selected.content || htmlToPlainText(curHtml)).trim(), c: normalizeCategory(selected.category) });
+    if (snap === curSnap) return;
 
-  const togglePin = async (n: KNote) => { await supabase.from("knowledge_notes").update({ is_pinned: !n.is_pinned }).eq("id", n.id); fetchNotes(); };
-  const toggleFav = async (n: KNote) => { await supabase.from("knowledge_notes").update({ is_favorite: !n.is_favorite }).eq("id", n.id); fetchNotes(); };
-  const deleteNote = async (n: KNote) => {
-    await supabase.from("knowledge_notes").delete().eq("id", n.id);
-    if (selected?.id === n.id) setSelected(null);
-    fetchNotes(); toast.success("Note deleted");
-  };
+    const timer = window.setTimeout(async () => {
+      setSaveState("saving");
+      const payload = { title: draftTitle.trim() || DEFAULT_NOTE_TITLE, html_content: draftHtml, content: draftText, category: normalizeCategory(draftCategory), word_count: countWords(draftText) };
+      const { data, error } = await supabase.from("knowledge_notes").update(payload).eq("id", selected.id).select(NOTE_COLS).single();
+      if (error || !data) { setSaveState("error"); toast.error("Auto-save failed."); return; }
+      setNotes((cur) => cur.map((n) => (n.id === selected.id ? (data as KNote) : n)));
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState((s) => (s === "saved" ? "idle" : s)), 1200);
+    }, 700);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftCategory, draftHtml, draftText, draftTitle, selected?.id]);
 
-  const filtered = notes.filter((n) => {
-    if (filterCat !== "all" && n.category !== filterCat) return false;
-    if (searchQ && !n.title.toLowerCase().includes(searchQ.toLowerCase()) && !(n.tags || []).some(t => t.toLowerCase().includes(searchQ.toLowerCase()))) return false;
-    return true;
-  });
+  const openNote = useCallback((note: KNote) => { setSelectedId(note.id); if (isMobile) setMobilePane("editor"); }, [isMobile]);
 
-  const allCategories = ["all", ...new Set([...CATEGORIES, ...notes.map(n => n.category || "general").filter(c => c !== "general")])];
-  const wordCount = plainContent.trim().split(/\s+/).filter(Boolean).length;
+  const createNote = useCallback(async () => {
+    if (!user) return;
+    const html = createNoteBodyHtml(); const text = createNoteBodyPlainText();
+    const { data, error } = await supabase.from("knowledge_notes").insert({ user_id: user.id, title: DEFAULT_NOTE_TITLE, content: text, html_content: html, category: DEFAULT_CATEGORY, word_count: countWords(text) }).select(NOTE_COLS).single();
+    if (error || !data) { toast.error("Could not create note."); return; }
+    const n = data as KNote; setNotes((c) => [n, ...c]); setSelectedId(n.id); loadDraft(n); setMobilePane("editor");
+  }, [loadDraft, user]);
 
-  if (authLoading) return null;
+  const deleteNote = useCallback(async () => {
+    if (!selected || !window.confirm("Delete this note?")) return;
+    const { error } = await supabase.from("knowledge_notes").delete().eq("id", selected.id);
+    if (error) { toast.error("Could not delete note."); return; }
+    const remaining = notes.filter((n) => n.id !== selected.id);
+    setNotes(remaining); setSelectedId(isMobile ? null : remaining[0]?.id ?? null);
+    if (isMobile) setMobilePane("list"); toast.success("Note deleted.");
+  }, [isMobile, notes, selected]);
+
+  const runAi = useCallback(async (mode: AiAction) => {
+    if (!selected) return;
+
+    if (mode === "improve") {
+      const body = draftText.trim();
+      if (!body) { toast.error("Write something first."); return; }
+      setAiAction("improve");
+      try {
+        const { data, error } = await supabase.functions.invoke("knowledge-ai", { body: { action: "grammar", text: body } });
+        if (error) throw error;
+        if (!data?.result) throw new Error("Could not improve note.");
+        const { videoId, imageMarkup } = extractMediaMarkup(draftHtml);
+        const improved = String(data.result).trim();
+        setDraftHtml(`${plainTextToEditorHtml(improved, videoId)}${imageMarkup}`.trim());
+        setDraftText(improved); setSaveState("idle"); toast.success("Note improved.");
+      } catch (e: any) { toast.error(e.message || "AI improve failed."); }
+      finally { setAiAction(null); }
+      return;
+    }
+
+    const source = draftTitle.trim();
+    if (!source || source.toLowerCase() === DEFAULT_NOTE_TITLE.toLowerCase()) {
+      toast.error("Type a topic or paste a YouTube link in the title first."); return;
+    }
+    if (mode === "magic" && !isYouTubeUrl(source) && source.length > MAGIC_INPUT_LIMIT) {
+      toast.error(`Magic works best with a short topic under ${MAGIC_INPUT_LIMIT} characters.`); return;
+    }
+
+    setAiAction(mode);
+    try {
+      const isVideo = isYouTubeUrl(source);
+      const reqBody = mode === "magic"
+        ? { action: "magic_note", text: source, url: isVideo ? source : undefined, detailed: false }
+        : isVideo
+          ? { action: "youtube_structured", url: source }
+          : { action: "generate_structured_note", text: source };
+      const { data, error } = await supabase.functions.invoke("knowledge-ai", { body: reqBody });
+      if (error) throw error;
+      if (data?.error || !data?.structured) throw new Error(data?.error || "AI generation failed.");
+      const s = data.structured as StudioStructuredNote;
+      setDraftTitle(s.title?.trim() || draftTitle.trim() || DEFAULT_NOTE_TITLE);
+      setDraftCategory(normalizeCategory(s.category || draftCategory));
+      setDraftHtml(buildStructuredBodyHtml(s, data.videoId ?? null));
+      setDraftText(buildStructuredBodyPlainText(s));
+      setSaveState("idle");
+      toast.success(mode === "magic" ? "Magic note ready." : "Structured note created.");
+    } catch (e: any) { toast.error(e.message || "AI generation failed."); }
+    finally { setAiAction(null); }
+  }, [draftCategory, draftHtml, draftText, draftTitle, selected]);
+
+  if (authLoading) return <div className="min-h-screen bg-background" />;
+
+  const saveLabel = saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Error" : "";
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="pt-16 flex h-screen">
-        {/* Sidebar — notes list */}
-        <div className={`w-full lg:w-80 border-r border-border/40 bg-background flex flex-col shrink-0 ${selected ? "hidden lg:flex" : "flex"}`}>
-          <div className="p-4 border-b border-border/40">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" /> Notes
-              </h2>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setShowSettings(true)} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Settings">
-                  <Settings className="h-4 w-4" />
-                </button>
-                <button onClick={createNote} className="p-2 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="New note">
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+    <div className={`${themeClass} h-[100dvh] overflow-hidden bg-background text-foreground`}>
+      <main className="grid h-full min-w-0 md:grid-cols-[320px_minmax(0,1fr)]">
 
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search notes..."
-                className="w-full text-sm rounded-xl bg-secondary/40 border border-border/30 pl-8 pr-3 py-3 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30 min-h-[44px]" />
-            </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {allCategories.slice(0, 6).map((c) => (
-                <button key={c} onClick={() => setFilterCat(c)}
-                  className={`px-2.5 py-1.5 text-[11px] rounded-full font-medium capitalize transition-colors min-h-[32px]
-                    ${filterCat === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary/50"}`}>
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
-            {filtered.map((n) => (
-              <NoteCard key={n.id} note={n} isSelected={selected?.id === n.id} onClick={() => selectNote(n)} />
-            ))}
-            {filtered.length === 0 && (
-              <div className="text-center py-16">
-                <BookOpen className="h-10 w-10 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground/60">No notes yet</p>
-                <button onClick={createNote} className="mt-3 text-xs text-primary hover:underline">+ Create your first note</button>
-              </div>
-            )}
-          </div>
-          <div className="p-3 border-t border-border/30 text-[11px] text-muted-foreground/50 text-center">
-            {notes.length} notes
-          </div>
-        </div>
-
-        {/* Editor area */}
-        <div className={`flex-1 flex flex-col bg-background ${!selected && "hidden lg:flex"}`}>
-          {selected ? (
-            <>
-              {/* Editor header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 border-b border-border/30 gap-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <button onClick={() => setSelected(null)} className="lg:hidden p-2 text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center">
-                    <ArrowLeft className="h-4 w-4" />
-                  </button>
-                  <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title..."
-                    className="text-xl sm:text-2xl font-bold text-foreground bg-transparent border-none outline-none flex-1 min-w-0 placeholder:text-muted-foreground/30 font-display" />
+        {(!isMobile || mobilePane === "list") && (
+          <aside className="flex h-full min-w-0 flex-col border-r border-border/70 bg-background/95">
+            <div className="border-b border-border/70 px-4 pb-4 pt-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Knowledge Studio</p>
+                  <h1 className="mt-1 text-2xl font-semibold text-foreground">Notes</h1>
                 </div>
-                <div className="flex items-center gap-1 shrink-0 flex-wrap">
-                  {/* Two simple AI buttons */}
-                  <button onClick={improveNote} disabled={generating}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-secondary/60 text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px]"
-                    title="Fix and refine your writing">
-                    {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-primary" />}
-                    Improve
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setShowSettings(true)} aria-label="Settings"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground hover:text-foreground transition-colors">
+                    <Settings2 className="h-4 w-4" />
                   </button>
-                  <button onClick={generateForCurrent} disabled={generating}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 min-h-[44px]"
-                    title="Create a structured note from a topic or video">
-                    {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-                    Generate
+                  <button type="button" onClick={createNote}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
+                    <Plus className="h-4 w-4" /> New Note
                   </button>
-
-                  {isMobile ? (
-                    <div className="relative">
-                      <button onClick={() => setShowMobileActions(!showMobileActions)}
-                        className="p-2 rounded-md text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center">
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                      {showMobileActions && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowMobileActions(false)} />
-                          <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-xl shadow-xl p-1 z-50 w-44">
-                            <button onClick={() => { setShowMeta(!showMeta); setShowMobileActions(false); }}
-                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary min-h-[44px]">
-                              <Filter className="h-3.5 w-3.5" /> Note Details
-                            </button>
-                            <button onClick={() => { togglePin(selected); setShowMobileActions(false); }}
-                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary min-h-[44px]">
-                              <Pin className="h-3.5 w-3.5" /> {selected.is_pinned ? "Unpin" : "Pin"}
-                            </button>
-                            <button onClick={() => { toggleFav(selected); setShowMobileActions(false); }}
-                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary min-h-[44px]">
-                              <Heart className="h-3.5 w-3.5" /> {selected.is_favorite ? "Unfavorite" : "Favorite"}
-                            </button>
-                            <button onClick={() => { deleteNote(selected); setShowMobileActions(false); }}
-                              className="flex items-center gap-2 w-full px-3 py-2.5 text-xs rounded-md hover:bg-secondary text-destructive min-h-[44px]">
-                              <Trash2 className="h-3.5 w-3.5" /> Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <button onClick={() => setShowMeta(!showMeta)} className={`p-2 rounded-md transition-colors ${showMeta ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`} title="Note details">
-                        <Filter className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => togglePin(selected)} className={`p-2 rounded-md ${selected.is_pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <Pin className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => toggleFav(selected)} className={`p-2 rounded-md ${selected.is_favorite ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <Heart className={`h-3.5 w-3.5 ${selected.is_favorite ? "fill-primary" : ""}`} />
-                      </button>
-                      <button onClick={() => deleteNote(selected)} className="p-2 rounded-md text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </>
-                  )}
-                  <div className="flex items-center gap-2 ml-1 text-[10px] text-muted-foreground/50">
-                    <span>{wordCount}w</span>
-                    {saving && <span className="text-primary flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving</span>}
-                  </div>
                 </div>
               </div>
 
-              {/* Metadata Panel */}
-              {showMeta && (
-                <div className="border-b border-border/30 bg-secondary/10">
-                  <div className="p-4 sm:p-5 max-w-[720px] mx-auto flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-5 sm:items-end">
-                    <div className="w-full sm:w-auto">
-                      <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Category</label>
-                      <select value={category} onChange={(e) => setCategory(e.target.value)}
-                        className="text-sm rounded-lg bg-secondary border border-border/50 px-3 py-2.5 text-foreground min-h-[44px] w-full sm:w-auto">
-                        <option value="general">General</option>
-                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div className="w-full sm:w-auto">
-                      <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Year</label>
-                      <input type="number" value={linkedYear} onChange={(e) => setLinkedYear(e.target.value)} placeholder="e.g. 1066"
-                        className="text-sm rounded-lg bg-secondary border border-border/50 px-3 py-2.5 text-foreground w-full sm:w-28 min-h-[44px]" />
-                    </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <label className="text-[10px] text-muted-foreground font-medium uppercase mb-1.5 block tracking-wider">Tags</label>
-                      <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="ww2, europe..."
-                        className="text-sm rounded-lg bg-secondary border border-border/50 px-3 py-2.5 text-foreground w-full min-h-[44px]" />
-                    </div>
-                  </div>
+              <div className="relative mt-4">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input type="text" placeholder="Search notes…" value={search} onChange={(e) => setSearch(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-border/70 bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/40 transition-colors" />
+              </div>
+
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {filterCats.map((cat) => (
+                  <button key={cat} type="button" onClick={() => setActiveCat(cat)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px] ${
+                      activeCat === cat ? "border-primary/35 bg-primary/10 text-primary" : "border-border/70 text-muted-foreground hover:text-foreground"
+                    }`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2"
+              onScroll={() => { if (listRef.current) sessionStorage.setItem(SCROLL_KEY, String(listRef.current.scrollTop)); }}>
+              {filtered.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                  <p className="text-sm">No notes yet.</p>
+                  <button type="button" onClick={createNote} className="mt-3 text-sm font-medium text-primary hover:underline">Create your first note</button>
                 </div>
               )}
+              {filtered.map((n) => <NoteCard key={n.id} note={n} isSelected={n.id === selectedId} onClick={() => openNote(n)} />)}
+            </div>
+          </aside>
+        )}
 
-              {/* Editor */}
-              <div className="flex-1 overflow-hidden">
-                <SmartEditor
-                  content={htmlContent}
-                  onChange={(html, text) => { setHtmlContent(html); setPlainContent(text); }}
-                  settings={settings}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-center p-8">
-              <div>
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
-                  <BookOpen className="h-8 w-8 text-primary/60" />
+        {(!isMobile || mobilePane === "editor") && (
+          <div className="flex h-full min-w-0 flex-col bg-background">
+            {selected ? (
+              <>
+                <div className="border-b border-border/70 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    {isMobile && (
+                      <button type="button" onClick={() => { setMobilePane("list"); setSelectedId(null); }}
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
+                        <ArrowLeft className="h-5 w-5" />
+                      </button>
+                    )}
+                    <input type="text" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)}
+                      placeholder="Title or paste YouTube link…"
+                      className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-foreground placeholder:text-muted-foreground/50 outline-none" />
+                    {saveLabel && <span className="shrink-0 text-xs text-muted-foreground">{saveLabel}</span>}
+                    <button type="button" onClick={deleteNote} aria-label="Delete note"
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-destructive transition-colors">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <p className="mt-2 text-xs text-muted-foreground/60">Start writing or use AI to generate a note from a topic or video.</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <AiBtn icon={Sparkles} label="Improve" tooltip="Fix grammar and improve clarity" loading={aiAction === "improve"} disabled={!!aiAction} onClick={() => runAi("improve")} />
+                    <AiBtn icon={Brain} label="Generate" tooltip="Create a structured note from topic or video" loading={aiAction === "generate"} disabled={!!aiAction} onClick={() => runAi("generate")} />
+                    <AiBtn icon={Wand2} label="Magic" tooltip="Full auto — structured note from short topic or video" loading={aiAction === "magic"} disabled={!!aiAction} primary onClick={() => runAi("magic")} />
+
+                    <select value={draftCategory} onChange={(e) => setDraftCategory(e.target.value)}
+                      className="ml-auto h-9 rounded-xl border border-border/70 bg-background px-3 text-xs text-foreground outline-none">
+                      {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <p className="text-xl font-semibold text-foreground mb-2 font-display">Knowledge Studio</p>
-                <p className="text-sm text-muted-foreground/60 mb-6 max-w-sm mx-auto">
-                  Select a note or create a new one to start learning.
-                </p>
-                <button onClick={createNote} className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-3 text-sm font-medium hover:opacity-90 transition-all min-h-[48px]">
+
+                <div className="flex-1 overflow-hidden">
+                  <SmartEditor content={draftHtml} onChange={(html, text) => { setDraftHtml(html); setDraftText(text); }} settings={settings} />
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+                <p className="text-lg font-medium">Select a note or create one</p>
+                <button type="button" onClick={createNote}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
                   <Plus className="h-4 w-4" /> New Note
                 </button>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {showSettings && (
-          <StudioSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} settings={settings} onChange={updateSettings} />
+            )}
+          </div>
         )}
-      </AnimatePresence>
+      </main>
+
+      <StudioSettingsPanel open={showSettings} onClose={() => setShowSettings(false)} settings={settings} onChange={updateSettings} />
     </div>
   );
-};
-
-function buildStructuredHtml(s: any, videoEmbed: string): string {
-  const kp = (s.key_points || []).map((p: string) => `<li>${p}</li>`).join("");
-  const timeline = (s.timeline || []).map((t: any) =>
-    `<li><strong>${t.year}</strong> — ${t.title}: ${t.description}</li>`
-  ).join("");
-  const figures = (s.figures || []).map((f: any) =>
-    `<li><strong>${f.name}</strong> (${f.role}) — ${f.significance}</li>`
-  ).join("");
-
-  return `
-<h1>${s.title || ""}</h1>
-<p><strong>${s.headline || ""}</strong></p>
-<hr/>
-<div class="section-label">Summary</div>
-<p>${s.summary || ""}</p>
-<hr/>
-<div style="display:flex;gap:24px;flex-wrap:wrap;margin:16px 0">
-  <div><span class="section-label">Year</span><p>${s.year || "—"}</p></div>
-  <div><span class="section-label">Timeline Period</span><p>${s.timeline_period || "—"}</p></div>
-  <div><span class="section-label">Category</span><p>${s.category || "—"}</p></div>
-</div>
-<hr/>
-<div class="section-label">Key Points</div>
-<ul>${kp}</ul>
-<hr/>
-<div class="section-label">Detailed Notes</div>
-<p>${(s.detailed_notes || "").replace(/\n/g, "</p><p>")}</p>
-${timeline ? `<hr/><div class="section-label">Timeline</div><ul>${timeline}</ul>` : ""}
-${figures ? `<hr/><div class="section-label">Key Figures</div><ul>${figures}</ul>` : ""}
-<hr/>
-<div class="section-label">My Thoughts</div>
-<p style="color:hsl(var(--muted-foreground));font-style:italic">${s.thoughts || "Add your thoughts here…"}</p>
-${videoEmbed}`.trim();
 }
 
-function buildStructuredPlain(s: any): string {
-  const kp = (s.key_points || []).map((p: string, i: number) => `${i + 1}. ${p}`).join("\n");
-  return `${s.title || ""}\n${s.headline || ""}\n\nSummary:\n${s.summary || ""}\n\nYear: ${s.year || ""}\nTimeline Period: ${s.timeline_period || ""}\nCategory: ${s.category || ""}\n\nKey Points:\n${kp}\n\nDetailed Notes:\n${s.detailed_notes || ""}\n\nMy Thoughts:\n${s.thoughts || ""}`;
+function AiBtn({ icon: Icon, label, tooltip, loading, disabled, primary, onClick }: {
+  icon: typeof Sparkles; label: string; tooltip: string; loading: boolean; disabled: boolean; primary?: boolean; onClick: () => void;
+}) {
+  return (
+    <button type="button" title={tooltip} disabled={disabled} onClick={onClick}
+      className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
+        primary
+          ? "border-primary bg-primary text-primary-foreground hover:opacity-90"
+          : "border-border/70 bg-card text-foreground hover:border-primary/30"
+      }`}>
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+      {label}
+    </button>
+  );
 }
-
-export default KnowledgeStudioPage;
