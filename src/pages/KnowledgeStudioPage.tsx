@@ -80,7 +80,7 @@ export default function KnowledgeStudioPage() {
   const themeClass = settings.theme === "light" ? "studio-theme-light" : settings.theme === "dark" ? "studio-theme-dark" : "studio-theme-warm";
 
   const loadDraft = useCallback((note: KNote) => {
-    const html = note.html_content?.trim() ? normalizeStoredHtml(note.html_content) : plainTextToEditorHtml(note.content || "");
+    const html = normalizeStoredHtml(note.html_content);
     setDraftTitle(note.title || DEFAULT_NOTE_TITLE);
     setDraftHtml(html);
     setDraftText((note.content || htmlToPlainText(html)).trim());
