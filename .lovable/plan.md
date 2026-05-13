@@ -1,271 +1,76 @@
-TITLE: Knowledge Studio → Apple Notes-Level UX Reset (FINAL FIX)
+# Studio Rebuild — AI-First Knowledge System
 
-GOAL:
+This plan rebuilds the `/studio` experience around large raw-input ingestion + a multi-stage AI pipeline, and tightens global theming/navigation. Scope is intentionally bounded — I'll confirm before expanding into quizzes, PDF upload, slash commands, or full site-wide nav rebuilds.
 
-Turn the Knowledge Studio into a clean, simple, Apple Notes-style system that:
+## 1. New Studio page (`src/pages/KnowledgeStudioPage.tsx`)
 
-- Works perfectly on mobile
+Replace current layout with a 3-state single-purpose screen:
 
-- Is easy to understand instantly
+- **Empty/Input state**: one large Apple-Notes-style textarea (auto-grow), placeholder "Paste an article, transcript, YouTube link, or your own notes…". No title field, no metadata, no template scaffolding. Drag-and-drop `.txt`/`.md` files supported.
+- **Generating state**: animated stage indicator showing the 5 pipeline stages (Ingesting → Chunking → Ranking → Synthesizing → Rendering) with subtle spring transitions.
+- **Result state**: rendered structured note (see §3) with sidebar list of past notes (collapsible, hidden on mobile by default).
 
-- Has simple but powerful AI
+Primary action: **✨ Generate Structured Note**. Secondary inline actions: Improve Writing, Summarize, Continue Writing (call same edge function with mode flag).
 
-- Has ZERO broken UI
+Sidebar/notes list: minimal — title, date, category pill. No dashboard widgets.
 
-This is a UX FIX — not a feature build.
+## 2. Multi-stage AI pipeline (edge function)
 
----
+New edge function `supabase/functions/knowledge-synthesize/index.ts` (or refactor existing `knowledge-ai`). Uses Lovable AI Gateway with `google/gemini-2.5-pro` for synthesis and `google/gemini-2.5-flash` for cheap classification/ranking.
 
-# 🔴 CRITICAL FIXES (MUST BE DONE)
+Pipeline:
+1. **Ingest**: detect type (article / transcript / youtube link / freeform / historical). For YouTube, fetch transcript via existing logic if available, else treat URL as topic.
+2. **Chunk**: semantic chunking by paragraph + heading boundaries; merge into ~2k token windows preserving structure. Skip if input < 4k tokens.
+3. **Rank**: per-chunk call to flash model returning JSON `{ key_concepts, entities, dates, importance_score }`. Aggregate + dedupe.
+4. **Synthesize**: single pro-model call with the ranked outline as context, producing strict JSON: `{ title, subtitle, summary, sections:[{heading, body, type:"text|timeline|quote|insight"}], key_insights[], timeline[], figures[], tags[], category, related_topics[] }`.
+5. **Persist**: save to `knowledge_notes` (existing table — `html_content` gets the rendered HTML, `content` gets plain text, structured JSON stored in a new column).
 
-1. FIX ALL BROKEN UI:
+Streaming progress events sent back via SSE so the UI can advance the stage indicator.
 
-- No overlapping elements
+## 3. Structured note renderer
 
-- No hidden buttons behind UI layers
+New component `src/components/studio/StructuredNoteView.tsx`:
 
-- Fix z-index issues (dropdowns, color pickers, menus must always appear above everything)
+- Hero: title + subtitle + category chip + tag row.
+- Summary card (soft tinted background).
+- Collapsible sections with smooth height animation.
+- Timeline rendered as vertical card stack with date markers.
+- Key insights as highlighted callout blocks.
+- Figures as compact avatar+name+role rows.
+- Quote blocks with left accent border.
+- Generous spacing, max-width 720px, 1.7 line-height.
 
-- Fix mobile scaling issues completely
+Editor remains available via "Edit raw" toggle (uses existing `SmartEditor`).
 
-2. FIX PAGE RELOAD BUG:
+## 4. Theming additions
 
-- Navigating inside Studio must NOT reload entire app
+Extend `ThemeContext` with two new modes: **Midnight** (deep navy `222 35% 8%`) and **Sepia** (`38 30% 92%`). Update `index.css` token blocks for both. Keep existing accent-color picker. Soften current Dark to navy-tinted (not pure black). Add subtle gradient on `body::before` for depth (already partially present).
 
-- Preserve selected note and scroll position
+## 5. Global nav polish (light pass only)
 
-3. FIX SETTINGS (THEY CURRENTLY DO NOT WORK):
+`Header.tsx`: keep current structure; add subtle hover gradient on nav items, smoother active-state pill (motion fade), and slightly increase touch targets on mobile. **Not** rebuilding the entire navigation IA.
 
-- Font size must instantly change editor text
+## 6. Mobile fixes
 
-- Reading width must update layout live
+- Studio editor: `100dvh` height, `env(safe-area-inset-bottom)` padding, sticky generate button above keyboard.
+- Header mobile menu: ensure dropdowns don't overflow viewport.
 
-- Mode toggle must actually switch UI
+## 7. Database
 
-- Ensure React state properly updates UI (no stale props)
+Add one column to `knowledge_notes`: `structured_data jsonb` (nullable) for the pipeline output. Migration via supabase tool.
 
----
+## Out of scope (will confirm separately if you want them next)
+- Quiz system rebuild
+- PDF upload / OCR
+- Slash commands & markdown shortcuts
+- Full site-wide navigation IA redesign (only polish here)
+- Persistent scroll/selection across hard reloads beyond what react-router already provides
 
-# 1. 🧼 SIMPLIFY SYSTEM (KEEP CORE ONLY)
+## Technical notes
+- Edge function uses streaming `text/event-stream` with stage events `{stage, progress}`; client `EventSource`-style reader via `fetch` + ReadableStream.
+- Strict JSON output enforced via `Output.object` (Zod schema) on synthesis call.
+- All AI calls server-side; no `LOVABLE_API_KEY` exposure.
+- Existing `SmartEditor` reused for "Edit raw" mode — no rewrite.
+- New tokens added to `index.css` only; component code uses semantic classes.
 
-REMOVE:
-
-- Quiz system (UI + logic)
-
-- Timeline view
-
-- Learning tracker
-
-- Related history panel
-
-- Magic Note system
-
-- Overcomplicated AI menus
-
-KEEP:
-
-- Notes list
-
-- Note editor
-
-- Categories
-
-- Basic AI assist
-
----
-
-# 2. 📱 APPLE NOTES UI STRUCTURE
-
-LAYOUT:
-
-Mobile:
-
-- Full screen editor OR notes list (not both cramped)
-
-- Back button to switch
-
-Desktop:
-
-- Left = notes list
-
-- Right = editor
-
----
-
-# 3. ✍️ STRUCTURED NOTE TEMPLATE (IMPROVED)
-
-Auto-insert this format:
-
-Title:
-
-Headline:
-
-Summary:
-
-Year:
-
-Timeline Period:
-
-Category:
-
-Key Points:
-
-Detailed Notes:
-
-My Thoughts:
-
-Make sections:
-
-- spaced
-
-- readable
-
-- separated by subtle dividers
-
----
-
-# 4. 🤖 SIMPLE BUT POWERFUL AI
-
-Replace ALL AI systems with:
-
-### BUTTON 1:
-
-✨ Improve Note
-
-- Fix grammar
-
-- Improve clarity
-
-- Keep structure
-
----
-
-### BUTTON 2:
-
-🧠 Generate Note
-
-- Input: topic OR YouTube link
-
-- Output: structured note ONLY
-
----
-
-### KEEP THIS (IMPORTANT):
-
-👉 Inline AI on text selection
-
-When selecting text:
-
-Show small popup:
-
-- Fix
-
-- Simplify
-
-- Expand
-
-(This keeps AI useful without clutter)
-
----
-
-# 5. 📱 MOBILE-FIRST FIXES
-
-- Minimum button size: 44px
-
-- Editor full width
-
-- No horizontal overflow
-
-- Header simplified
-
-- Dropdown menus reposition inside viewport
-
----
-
-# 6. ⚙️ SETTINGS (FIX PROPERLY)
-
-Ensure:
-
-- Changes apply instantly
-
-- Persist via localStorage
-
-- Affect SmartEditor dynamically
-
-Add:
-
-- Light / Dark toggle (OPTIONAL but valuable)
-
----
-
-# 7. 🎨 CLEAN APPLE-STYLE DESIGN
-
-- Softer colors
-
-- More whitespace
-
-- Larger text
-
-- Remove heavy shadows/glow
-
-- Calm UI
-
----
-
-# 8. 🧠 ADD GUIDANCE (VERY IMPORTANT)
-
-Add small helper text:
-
-At top of editor:
-
-"Start writing or use AI to generate a note from a topic or video."
-
-Add tooltips to buttons:
-
-- Improve → "Fix and refine your writing"
-
-- Generate → "Create a structured note from a topic or video"
-
----
-
-# 9. 🎥 FIX YOUTUBE SYSTEM
-
-When a YouTube link is used:
-
-- Extract structured content properly
-
-- Insert into correct sections
-
-- Embed video cleanly at bottom
-
-- Do NOT break layout
-
----
-
-# 10. 🚀 PERFORMANCE & STABILITY
-
-- Remove unnecessary re-renders
-
-- Keep navigation smooth
-
-- No UI flickering
-
----
-
-# FINAL RESULT SHOULD FEEL LIKE:
-
-- Apple Notes
-
-- Clean, calm, simple
-
-- Fast and smooth
-
-- Easy to use instantly
-
----
-
-IMPORTANT:
-
-Do NOT add new features.
-
-Fix usability, clarity, and stability first
+Approve and I'll implement in this order: migration → edge function → renderer → page rewrite → theming → mobile/nav polish.

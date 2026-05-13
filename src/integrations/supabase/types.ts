@@ -787,6 +787,7 @@ export type Database = {
           linked_event_id: string | null
           linked_year: number | null
           media_urls: string[] | null
+          structured_data: Json | null
           tags: string[] | null
           title: string
           updated_at: string
@@ -807,6 +808,7 @@ export type Database = {
           linked_event_id?: string | null
           linked_year?: number | null
           media_urls?: string[] | null
+          structured_data?: Json | null
           tags?: string[] | null
           title?: string
           updated_at?: string
@@ -827,6 +829,7 @@ export type Database = {
           linked_event_id?: string | null
           linked_year?: number | null
           media_urls?: string[] | null
+          structured_data?: Json | null
           tags?: string[] | null
           title?: string
           updated_at?: string
