@@ -1,0 +1,1 @@
+ALTER TABLE public.knowledge_notes ADD COLUMN IF NOT EXISTS structured_data jsonb;
