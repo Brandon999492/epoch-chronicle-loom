@@ -124,8 +124,8 @@ export default function KnowledgeStudioPage() {
           category: structured.category || "General",
           tags: structured.tags || [],
           word_count: (structured.summary || "").split(/\s+/).filter(Boolean).length,
-          structured_data: { ...structured, _videoId: videoId } as unknown as Record<string, unknown>,
-        })
+          structured_data: { ...structured, _videoId: videoId },
+        } as never)
         .select(NOTE_COLS)
         .single();
 
