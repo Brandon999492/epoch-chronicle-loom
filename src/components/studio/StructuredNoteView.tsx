@@ -145,7 +145,7 @@ export function StructuredNoteView({ note, videoId, highlights }: Props) {
           </h2>
           <div className="mb-12 grid gap-3 sm:grid-cols-2">
             {note.figures.map((f, i) => (
-              <div key={i} className="rounded-xl border border-border/50 bg-card/50 p-4">
+              <div key={i} className={`rounded-xl border border-border/50 bg-card/50 p-4 ${isNew(highlights?.figures, f.name) ? "studio-new" : ""}`}>
                 <div className="font-medium text-foreground">{f.name}</div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground/70">{f.role}</div>
                 <p className="mt-2 text-sm leading-[1.65] text-foreground/80">{f.significance}</p>
