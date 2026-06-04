@@ -166,6 +166,21 @@ const SYNTH_SCHEMA = {
   additionalProperties: false,
 } as Json;
 
+function expansionInstruction(kind: string): string {
+  switch (kind) {
+    case "academic": return "Deepen with academic rigor: cite mechanisms, schools of thought, scholarly debate, and precise terminology.";
+    case "beginner": return "Add beginner-friendly explanations, analogies, and definitions for technical terms — without removing existing depth.";
+    case "context": return "Add surrounding historical, social, and cultural context that situates the topic.";
+    case "related": return "Add related events, parallel developments, and connections to other topics.";
+    case "scientific": return "Add scientific detail: underlying mechanisms, data, methodology, and empirical findings.";
+    case "historical": return "Add historical analysis: causes, consequences, long-term influence, and historiographical perspectives.";
+    case "counter": return "Add counterarguments, critiques, and alternative interpretations where they exist.";
+    case "timeline": return "Add additional timeline events with precise dates and short descriptions, in chronological order.";
+    case "more_detail":
+    default: return "Add more detail and nuance across every section. Expand briefly-covered points into fuller paragraphs.";
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
