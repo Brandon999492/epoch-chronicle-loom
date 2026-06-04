@@ -14,12 +14,22 @@ export type StructuredNote = {
   related_topics?: string[];
 };
 
+export type NoteHighlights = {
+  insights?: Set<string>;
+  sections?: Set<string>;
+  timeline?: Set<string>;
+  figures?: Set<string>;
+};
+
 interface Props {
   note: StructuredNote;
   videoId?: string | null;
+  highlights?: NoteHighlights;
 }
 
-export function StructuredNoteView({ note, videoId }: Props) {
+export function StructuredNoteView({ note, videoId, highlights }: Props) {
+  const isNew = (set: Set<string> | undefined, key: string) =>
+    !!set && set.has(key);
   return (
     <article className="mx-auto w-full max-w-[720px] px-5 pb-24 pt-10 sm:px-8 sm:pt-14">
       {/* Hero */}
