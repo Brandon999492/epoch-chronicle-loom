@@ -126,7 +126,7 @@ export function StructuredNoteView({ note, videoId, highlights }: Props) {
             {note.timeline.map((t, i) => (
               <li key={i} className="relative">
                 <span className="absolute -left-[29px] top-2 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-background" />
-                <div className="rounded-xl border border-border/40 bg-card/50 p-4">
+                <div className={`rounded-xl border border-border/40 bg-card/50 p-4 ${isNew(highlights?.timeline, t.title) ? "studio-new" : ""}`}>
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">{t.year}</div>
                   <div className="mt-1 font-medium text-foreground">{t.title}</div>
                   <p className="mt-1.5 text-sm leading-[1.7] text-muted-foreground">{t.description}</p>
