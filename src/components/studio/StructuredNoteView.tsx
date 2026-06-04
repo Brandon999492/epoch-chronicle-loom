@@ -106,9 +106,11 @@ export function StructuredNoteView({ note, videoId, highlights }: Props) {
         <div className="mb-12 space-y-4">
           {note.sections.map((s, i) => (
             <SectionFade key={i} delay={0.12 + i * 0.04}>
-              <CollapsibleSection heading={s.heading} type={s.type}>
-                {renderBody(s.body)}
-              </CollapsibleSection>
+              <div className={isNew(highlights?.sections, s.heading) ? "studio-new" : ""}>
+                <CollapsibleSection heading={s.heading} type={s.type}>
+                  {renderBody(s.body)}
+                </CollapsibleSection>
+              </div>
             </SectionFade>
           ))}
         </div>
