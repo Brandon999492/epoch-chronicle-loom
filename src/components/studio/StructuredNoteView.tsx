@@ -92,7 +92,7 @@ export function StructuredNoteView({ note, videoId, highlights }: Props) {
             {note.key_insights.map((ins, i) => (
               <li
                 key={i}
-                className="flex gap-3 rounded-xl border-l-2 border-primary/60 bg-primary/[0.04] py-2.5 pl-4 pr-3 leading-[1.7] text-foreground/90"
+                className={`flex gap-3 rounded-xl border-l-2 border-primary/60 bg-primary/[0.04] py-2.5 pl-4 pr-3 leading-[1.7] text-foreground/90 ${isNew(highlights?.insights, ins) ? "studio-new" : ""}`}
               >
                 <span>{ins}</span>
               </li>
