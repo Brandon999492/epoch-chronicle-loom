@@ -14,12 +14,22 @@ export type StructuredNote = {
   related_topics?: string[];
 };
 
+export type NoteHighlights = {
+  insights?: Set<string>;
+  sections?: Set<string>;
+  timeline?: Set<string>;
+  figures?: Set<string>;
+};
+
 interface Props {
   note: StructuredNote;
   videoId?: string | null;
+  highlights?: NoteHighlights;
 }
 
-export function StructuredNoteView({ note, videoId }: Props) {
+export function StructuredNoteView({ note, videoId, highlights }: Props) {
+  const isNew = (set: Set<string> | undefined, key: string) =>
+    !!set && set.has(key);
   return (
     <article className="mx-auto w-full max-w-[720px] px-5 pb-24 pt-10 sm:px-8 sm:pt-14">
       {/* Hero */}
@@ -82,7 +92,7 @@ export function StructuredNoteView({ note, videoId }: Props) {
             {note.key_insights.map((ins, i) => (
               <li
                 key={i}
-                className="flex gap-3 rounded-xl border-l-2 border-primary/60 bg-primary/[0.04] py-2.5 pl-4 pr-3 leading-[1.7] text-foreground/90"
+                className={`flex gap-3 rounded-xl border-l-2 border-primary/60 bg-primary/[0.04] py-2.5 pl-4 pr-3 leading-[1.7] text-foreground/90 ${isNew(highlights?.insights, ins) ? "studio-new" : ""}`}
               >
                 <span>{ins}</span>
               </li>
@@ -96,9 +106,11 @@ export function StructuredNoteView({ note, videoId }: Props) {
         <div className="mb-12 space-y-4">
           {note.sections.map((s, i) => (
             <SectionFade key={i} delay={0.12 + i * 0.04}>
-              <CollapsibleSection heading={s.heading} type={s.type}>
-                {renderBody(s.body)}
-              </CollapsibleSection>
+              <div className={isNew(highlights?.sections, s.heading) ? "studio-new" : ""}>
+                <CollapsibleSection heading={s.heading} type={s.type}>
+                  {renderBody(s.body)}
+                </CollapsibleSection>
+              </div>
             </SectionFade>
           ))}
         </div>
@@ -114,7 +126,7 @@ export function StructuredNoteView({ note, videoId }: Props) {
             {note.timeline.map((t, i) => (
               <li key={i} className="relative">
                 <span className="absolute -left-[29px] top-2 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-background" />
-                <div className="rounded-xl border border-border/40 bg-card/50 p-4">
+                <div className={`rounded-xl border border-border/40 bg-card/50 p-4 ${isNew(highlights?.timeline, t.title) ? "studio-new" : ""}`}>
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">{t.year}</div>
                   <div className="mt-1 font-medium text-foreground">{t.title}</div>
                   <p className="mt-1.5 text-sm leading-[1.7] text-muted-foreground">{t.description}</p>
@@ -133,7 +145,7 @@ export function StructuredNoteView({ note, videoId }: Props) {
           </h2>
           <div className="mb-12 grid gap-3 sm:grid-cols-2">
             {note.figures.map((f, i) => (
-              <div key={i} className="rounded-xl border border-border/50 bg-card/50 p-4">
+              <div key={i} className={`rounded-xl border border-border/50 bg-card/50 p-4 ${isNew(highlights?.figures, f.name) ? "studio-new" : ""}`}>
                 <div className="font-medium text-foreground">{f.name}</div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground/70">{f.role}</div>
                 <p className="mt-2 text-sm leading-[1.65] text-foreground/80">{f.significance}</p>

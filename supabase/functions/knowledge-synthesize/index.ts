@@ -166,6 +166,21 @@ const SYNTH_SCHEMA = {
   additionalProperties: false,
 } as Json;
 
+function expansionInstruction(kind: string): string {
+  switch (kind) {
+    case "academic": return "Deepen with academic rigor: cite mechanisms, schools of thought, scholarly debate, and precise terminology.";
+    case "beginner": return "Add beginner-friendly explanations, analogies, and definitions for technical terms — without removing existing depth.";
+    case "context": return "Add surrounding historical, social, and cultural context that situates the topic.";
+    case "related": return "Add related events, parallel developments, and connections to other topics.";
+    case "scientific": return "Add scientific detail: underlying mechanisms, data, methodology, and empirical findings.";
+    case "historical": return "Add historical analysis: causes, consequences, long-term influence, and historiographical perspectives.";
+    case "counter": return "Add counterarguments, critiques, and alternative interpretations where they exist.";
+    case "timeline": return "Add additional timeline events with precise dates and short descriptions, in chronological order.";
+    case "more_detail":
+    default: return "Add more detail and nuance across every section. Expand briefly-covered points into fuller paragraphs.";
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -173,36 +188,73 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return json({ error: "LOVABLE_API_KEY not configured" }, 500);
 
-    const { input, mode = "generate" } = await req.json();
+    const body = await req.json();
+    const { input, mode = "generate", structured: existing, expansionType, additional } = body ?? {};
     const raw = String(input ?? "").trim();
-    if (!raw) return json({ error: "Input is required" }, 400);
-    if (raw.length > 200_000) return json({ error: "Input too large (max ~200k chars)" }, 400);
 
     // ── Quick modes (no full pipeline) ──
-    if (mode === "improve") {
-      const out = await callAi({
-        apiKey, model: FAST_MODEL,
-        system: "You are an expert editor. Improve the text for clarity, grammar, flow, and concision. Preserve meaning. Return only the improved text, no preamble.",
-        user: raw,
-      });
+    if (mode === "improve" || mode === "summarize" || mode === "continue") {
+      if (!raw) return json({ error: "Input is required" }, 400);
+      const sys =
+        mode === "improve"
+          ? "You are an expert editor. Improve the text for clarity, grammar, flow, and concision. Preserve meaning. Return only the improved text, no preamble."
+          : mode === "summarize"
+          ? "Summarize the text in 3-5 calm, readable sentences. Lead with the most important point."
+          : "Continue the user's writing in the same voice and tone. Add 1-2 paragraphs that naturally extend the ideas. Return only the continuation.";
+      const out = await callAi({ apiKey, model: FAST_MODEL, system: sys, user: raw });
       return json({ result: String(out).trim() });
     }
-    if (mode === "summarize") {
+
+    // ── EXPAND: deepen an existing structured note in place ──
+    if (mode === "expand") {
+      if (!existing) return json({ error: "Existing note required" }, 400);
+      const directive = expansionInstruction(String(expansionType ?? "more_detail"));
+      const expandSystem = [
+        "You are a senior research editor evolving an existing structured knowledge note into a deeper v2.",
+        "CRITICAL RULES:",
+        "- Preserve every existing section heading, insight, timeline entry, and figure. Do NOT delete or rename them.",
+        "- Deepen existing section bodies with additional nuance, context, and supporting detail (1-3 extra paragraphs each where useful).",
+        "- You may ADD new sections, insights, timeline events, or figures where they meaningfully extend the note.",
+        "- Keep the same voice, tone, category, and overall structure. No filler.",
+        directive,
+      ].join("\n");
+      const expandUser = `Existing structured note (JSON):\n${JSON.stringify(existing).slice(0, 60_000)}\n\nReturn the FULL evolved note as structured JSON.`;
       const out = await callAi({
-        apiKey, model: FAST_MODEL,
-        system: "Summarize the text in 3-5 calm, readable sentences. Lead with the most important point.",
-        user: raw,
+        apiKey, model: PRO_MODEL, system: expandSystem, user: expandUser,
+        tool: { name: "compose_structured_note", parameters: SYNTH_SCHEMA },
       });
-      return json({ result: String(out).trim() });
+      return json({ structured: out });
     }
-    if (mode === "continue") {
+
+    // ── MERGE: integrate new material into existing note ──
+    if (mode === "merge") {
+      if (!existing) return json({ error: "Existing note required" }, 400);
+      const extra = String(additional ?? "").trim();
+      if (!extra) return json({ error: "Additional content required" }, 400);
+      const mergeSystem = [
+        "You are a senior research editor merging NEW MATERIAL into an existing structured knowledge note.",
+        "CRITICAL RULES:",
+        "- Preserve all existing sections, insights, timeline, and figures. Do not rename or remove them.",
+        "- For each piece of the new material, identify the MOST RELEVANT existing section and weave the new information into that section's body.",
+        "- Only create a NEW section if the new material genuinely does not fit any existing section.",
+        "- Add new key insights, timeline events, or figures where supported by the new material.",
+        "- The result must feel seamless — a reader should not be able to tell which parts were added later.",
+        "- Maintain the original voice, tone, and category.",
+      ].join("\n");
+      const mergeUser =
+        `EXISTING NOTE (JSON):\n${JSON.stringify(existing).slice(0, 50_000)}\n\n` +
+        `NEW MATERIAL TO INTEGRATE:\n${extra.slice(0, 80_000)}\n\n` +
+        `Return the FULL merged note as structured JSON.`;
       const out = await callAi({
-        apiKey, model: FAST_MODEL,
-        system: "Continue the user's writing in the same voice and tone. Add 1-2 paragraphs that naturally extend the ideas. Return only the continuation.",
-        user: raw,
+        apiKey, model: PRO_MODEL, system: mergeSystem, user: mergeUser,
+        tool: { name: "compose_structured_note", parameters: SYNTH_SCHEMA },
       });
-      return json({ result: String(out).trim() });
+      return json({ structured: out });
     }
+
+    // ── generate (default): full multi-stage synthesis ──
+    if (!raw) return json({ error: "Input is required" }, 400);
+    if (raw.length > 200_000) return json({ error: "Input too large (max ~200k chars)" }, 400);
 
     // ── Full multi-stage synthesis ──
     const kind = detectKind(raw);
