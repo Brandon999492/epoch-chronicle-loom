@@ -38,6 +38,7 @@ import CategoryPage from "./pages/CategoryPage";
 import LearnPage from "./pages/LearnPage";
 import KnowledgeStudioPage from "./pages/KnowledgeStudioPage";
 import NotFound from "./pages/NotFound";
+import OAuthConsentPage from "./pages/OAuthConsentPage";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
             <Route path="/map" element={<Suspense fallback={<div className="min-h-screen bg-background" />}><HistoryMapPage /></Suspense>} />
             <Route path="/learn" element={<LearnPage />} />
             <Route path="/studio" element={<KnowledgeStudioPage />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

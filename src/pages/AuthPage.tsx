@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
 import { motion } from "framer-motion";
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
 import { lovable } from "@/integrations/lovable/index";
+
+function safeNext(raw: string | null): string {
+  if (!raw) return "/";
+  // same-origin relative path only
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  return raw;
+}
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,12 +23,14 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get("next"));
 
   useEffect(() => {
     if (user) {
-      navigate("/", { replace: true });
+      navigate(next, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, next]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +43,7 @@ const AuthPage = () => {
       if (error) {
         setError(error.message);
       } else {
-        navigate("/");
+        navigate(next);
       }
     } else {
       const { error } = await signUp(email, password, username);
@@ -46,6 +55,7 @@ const AuthPage = () => {
     }
     setLoading(false);
   };
+
 
   return (
     <div className="min-h-screen bg-background">
