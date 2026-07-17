@@ -38,6 +38,7 @@ import CategoryPage from "./pages/CategoryPage";
 import LearnPage from "./pages/LearnPage";
 import KnowledgeStudioPage from "./pages/KnowledgeStudioPage";
 import NotFound from "./pages/NotFound";
+import OAuthConsentPage from "./pages/OAuthConsentPage";
 
 const queryClient = new QueryClient();
 
