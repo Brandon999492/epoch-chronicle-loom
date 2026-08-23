@@ -67,12 +67,20 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      return new Response(JSON.stringify({ error: text || "AI generation failed" }), {
-        status: response.status,
+      const text = await response.text().catch(() => "");
+      console.error("generate-wallpaper AI gateway error:", response.status, text);
+      const status = response.status === 429 || response.status === 402 ? response.status : 500;
+      const msg = status === 429
+        ? "Rate limit exceeded. Please wait."
+        : status === 402
+        ? "AI credits exhausted."
+        : "AI image service temporarily unavailable.";
+      return new Response(JSON.stringify({ error: msg }), {
+        status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const data = await response.json();
     const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
