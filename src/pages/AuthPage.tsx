@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { motion } from "framer-motion";
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
 import { lovable } from "@/integrations/lovable/index";
+import { rememberOAuthNext } from "@/lib/authCallback";
 
 function safeNext(raw: string | null): string {
   if (!raw) return "/";
@@ -21,10 +22,14 @@ const AuthPage = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, oauthError } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
+
+  useEffect(() => {
+    if (oauthError) setError(oauthError);
+  }, [oauthError]);
 
   useEffect(() => {
     if (user) {
@@ -145,11 +150,21 @@ const AuthPage = () => {
               type="button"
               onClick={async () => {
                 setError("");
-                const result = await lovable.auth.signInWithOAuth("apple", {
-                  redirect_uri: window.location.origin,
-                });
-                if (result?.error) {
-                  setError(result.error.message || "Apple sign-in failed");
+                // Remember where to land; the OAuth redirect must return to a
+                // public same-origin URL, so we cannot point Apple/Google at it.
+                rememberOAuthNext(next);
+                try {
+                  const result = await lovable.auth.signInWithOAuth("apple", {
+                    redirect_uri: window.location.origin,
+                  });
+                  if (result?.redirected) return; // full-page redirect in progress
+                  if (result?.error) {
+                    console.error("[auth] apple sign-in failed:", result.error);
+                    setError(result.error.message || "Apple sign-in failed");
+                  }
+                } catch (err) {
+                  console.error("[auth] apple sign-in threw:", err);
+                  setError(err instanceof Error ? err.message : "Apple sign-in failed");
                 }
               }}
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-foreground text-background py-3 font-medium text-sm hover:opacity-90 transition-opacity"
@@ -164,11 +179,21 @@ const AuthPage = () => {
               type="button"
               onClick={async () => {
                 setError("");
-                const result = await lovable.auth.signInWithOAuth("google", {
-                  redirect_uri: window.location.origin,
-                });
-                if (result?.error) {
-                  setError(result.error.message || "Google sign-in failed");
+                // Remember where to land; the OAuth redirect must return to a
+                // public same-origin URL, so we cannot point Apple/Google at it.
+                rememberOAuthNext(next);
+                try {
+                  const result = await lovable.auth.signInWithOAuth("google", {
+                    redirect_uri: window.location.origin,
+                  });
+                  if (result?.redirected) return; // full-page redirect in progress
+                  if (result?.error) {
+                    console.error("[auth] google sign-in failed:", result.error);
+                    setError(result.error.message || "Google sign-in failed");
+                  }
+                } catch (err) {
+                  console.error("[auth] google sign-in threw:", err);
+                  setError(err instanceof Error ? err.message : "Google sign-in failed");
                 }
               }}
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-secondary/80 border border-border text-foreground py-3 font-medium text-sm hover:bg-secondary transition-colors mt-3"
