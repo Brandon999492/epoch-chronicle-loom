@@ -1,6 +1,8 @@
 // Multi-stage AI knowledge synthesis pipeline.
 // Stages: ingest → chunk → rank → synthesize.
 // Returns a structured note JSON optimized for the StructuredNoteView renderer.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
