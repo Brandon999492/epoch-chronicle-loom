@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,26 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const authClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { prompt } = await req.json();
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -16,6 +37,13 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (prompt.length > 2000) {
+      return new Response(JSON.stringify({ error: "Prompt must be under 2000 characters" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -39,12 +67,20 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      return new Response(JSON.stringify({ error: text || "AI generation failed" }), {
-        status: response.status,
+      const text = await response.text().catch(() => "");
+      console.error("generate-wallpaper AI gateway error:", response.status, text);
+      const status = response.status === 429 || response.status === 402 ? response.status : 500;
+      const msg = status === 429
+        ? "Rate limit exceeded. Please wait."
+        : status === 402
+        ? "AI credits exhausted."
+        : "AI image service temporarily unavailable.";
+      return new Response(JSON.stringify({ error: msg }), {
+        status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const data = await response.json();
     const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
