@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   ChevronLeft, Plus, Sparkles, Loader2, Trash2, Search, FileText, Wand2,
   ArrowUpRight, Brain, ScrollText, RefreshCw, Undo2, Redo2, History, PlusCircle,
-  X, Check,
+  X, Check, Headphones,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ import {
   type StructuredNote,
   type NoteHighlights,
 } from "@/components/studio/StructuredNoteView";
+import { NoteVoicePlayer } from "@/components/studio/NoteVoicePlayer";
 
 type StoredNote = StructuredNote & {
   _videoId?: string | null;
@@ -97,6 +98,7 @@ export default function KnowledgeStudioPage() {
   const [progress, setProgress] = useState(0);
   const [activeNote, setActiveNote] = useState<SavedNote | null>(null);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [listenOpen, setListenOpen] = useState(false);
   const [notes, setNotes] = useState<SavedNote[]>([]);
   const [search, setSearch] = useState("");
   const [showSidebar, setShowSidebar] = useState(!isMobile);
@@ -411,6 +413,7 @@ export default function KnowledgeStudioPage() {
     setHighlights(undefined);
     setAddOpen(false); setAddText("");
     setExpandOpen(false); setVersionsOpen(false);
+    setListenOpen(false);
     if (isMobile) setShowSidebar(false);
   }, [isMobile]);
 
@@ -419,6 +422,7 @@ export default function KnowledgeStudioPage() {
     setStage("idle"); setProgress(0);
     setVersions([]); setVersionIdx(0); setHighlights(undefined);
     setAddOpen(false); setAddText(""); setExpandOpen(false); setVersionsOpen(false);
+    setListenOpen(false);
     if (isMobile) setShowSidebar(false);
     setTimeout(() => taRef.current?.focus(), 50);
   }, [isMobile]);
@@ -593,6 +597,21 @@ export default function KnowledgeStudioPage() {
               </button>
 
               <div className="flex flex-wrap items-center gap-1">
+                {/* Listen */}
+                {activeNote.structured_data && (
+                  <button
+                    onClick={() => setListenOpen((o) => !o)}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                      listenOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                    title="Listen to this note"
+                    aria-label="Listen to this note"
+                  >
+                    <Headphones className="h-4 w-4" />
+                    <span className="hidden sm:inline">Listen</span>
+                  </button>
+                )}
+
                 {/* Expand */}
                 <div className="relative">
                   <button
@@ -717,6 +736,13 @@ export default function KnowledgeStudioPage() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 {evolveBusy === "expand" ? "Deepening note with new detail…" : "Merging new information…"}
               </div>
+            )}
+
+            {listenOpen && activeNote.structured_data && (
+              <NoteVoicePlayer
+                note={stripMeta(activeNote.structured_data)}
+                onClose={() => setListenOpen(false)}
+              />
             )}
 
             {activeNote.structured_data ? (
